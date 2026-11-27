@@ -1,0 +1,41 @@
+{
+  "audit_id": "P03",
+  "title": "Overturning uses native rows where geographic latitude paths need review",
+  "status": "PROVISIONAL — do not submit as a confirmed erratum",
+  "proposed_severity": "Potentially High for transport geometry; no parent-grid-label erratum",
+  "model": "ACCESS-ESM1-6",
+  "audit_date": "2026-11-27",
+  "description": "A tripolar ocean grid row bends in the Arctic. The sampled msftm files contain the same native-row sums as msfty, although msftm is described as following approximate geographic latitudes. The numerical difference from an agreed latitude-following calculation is still unknown.",
+  "example": "The Atlantic–Arctic row labelled 76.884°N includes wet-face midpoints from 69.906°N to 76.884°N; 116 of 194 are more than one degree from that nominal latitude. A user interpreting it as a section near that parallel could assign the transport to the wrong path.",
+  "scientific_evidence": "Three complete msftm/msfty file pairs have identical values, times and masks. Independent January reconstruction from archived MOM j-face transports matches both on six sampled rows. Supergrid face coordinates establish the Arctic departures. This checks six published files from two experiments, not all 28 candidate versions. Current CMIP7 guidance permits parent g116; g262 does not describe these nonuniform 300 native rows.",
+  "impact": "The sampled path representation merits scientific review. Quantitative bias against an approved geographic transport reference remains unknown. Native-row msfty is a comparator, not automatically defective, and parent-grid labelling alone is not an erratum.",
+  "recommended_action": "Agree target latitude paths, conservative i/j face selection/orientation, basin masks, components and reference transport before implementing a replacement. Check matching input cadence: sampled density i transports are annual, whereas j transports are monthly. Do not substitute g262 or relabel coordinates to imply an uncomputed geographic section.",
+  "development_team_action": "MOM/ocean and CMIP7 diagnostic teams: settle the scientific path/reference and cadence requirements. MOPPy: implement the approved derivation only after those decisions. Publication team: identify confirmed msftm versions after that comparison; the 28-version inventory also contains msfty and is investigation scope.",
+  "affected_dataset_versions": null,
+  "file_references": 994,
+  "file_list": "candidate-files.txt",
+  "file_list_sha256": "e462830d0edf64a79369aa8ab9cb74b95d43b35a9322b494ceb4ad68ba6e1a35",
+  "extent_statement": "Investigation scope: 28 versions / 994 files. Detailed comparisons cover three msftm/msfty pairs (six files); the candidate list is not a verified withdrawal list.",
+  "related_issues_or_prs": [
+    827,
+    830
+  ],
+  "tracking_issue": 864,
+  "replacement_versions": null,
+  "esgf_erratum_uid": null,
+  "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/864",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP"
+  ],
+  "validation": "All values in three complete published file pairs are identical. Independent native reconstruction is exact on six January rows for the depth and two density cases. The sample establishes path provenance, not error magnitude versus an approved alternative.",
+  "implementation_or_validation_pr": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/pull/875",
+  "tested_candidate_commit": "e9dc5baa9b94b922a4a06b5e684a8c4397459eab",
+  "comparison_file_list": "comparison-files.txt",
+  "comparison_file_count": 6,
+  "comparison_file_list_sha256": "560f3402149b1dc1cc588e710e71b592b019f3069cb5fa669d14143e4b7ee989",
+  "guidance_source": "https://github.com/WCRP-CMIP/cmip7-guidance/blob/e116c32cdd5acbdd54d53f5c5412025936d9446a/docs/CMIP7/Grid_Labels_for_Derived_Products.md",
+  "dataset_versions_in_scope": 28
+}

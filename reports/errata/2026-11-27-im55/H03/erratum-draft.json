@@ -1,0 +1,38 @@
+{
+  "audit_id": "H03",
+  "title": "Soil-layer thickness files call layer numbers depths in metres",
+  "status": "DRAFT — not submitted to ESGF",
+  "proposed_severity": "High",
+  "model": "ACCESS-ESM1-6",
+  "audit_date": "2026-11-27",
+  "description": "The static resource numbers its layers 1 to 6. Publication then labels those numbers as physical depth in metres, although the whole soil column is only 4.6 m deep.",
+  "example": "Matching slthick to soil temperature by depth can pair the wrong layers or find no match at all. The thickness values are sensible; it is the coordinate describing where those values belong that is wrong.",
+  "scientific_evidence": "All 138 fixed-file headers have the same false physical coordinate. The resource supplies dimensionless sdepth indices; publication relabels them as depth in metres. The sampled thickness data themselves are the correct [.022,.058,.154,.409,1.085,2.872] m.",
+  "impact": "Joining or interpolating slthick with tsl or mrsol by physical depth silently mismatches layers. The raw thickness numbers can still be used by verified layer index.",
+  "recommended_action": "Assign the shared native CABLE centres and bounds before publication. Check missing ocean values as well: the sampled resource-derived thickness also uses zero outside land. Preserve real layer thicknesses.",
+  "development_team_action": "MOPPy: apply shared CABLE physical centres/bounds to the slthick resource and mask its all-zero ocean columns. Both supported models use this resource; the implementation covers both. Native model geometry is consistent, so no model-code change is indicated.",
+  "affected_dataset_versions": 138,
+  "file_references": 138,
+  "file_list": "affected-files.txt",
+  "file_list_sha256": "7b2f366f83e1eb20391fdf93afc38db72a5fe8dada4c08fb5b61eb3c8c64b573",
+  "extent_statement": "Complete file list within the identified release versions; numerical confirmation was sampled, not a scan of every value.",
+  "related_issues_or_prs": [
+    817,
+    850
+  ],
+  "tracking_issue": 860,
+  "replacement_versions": null,
+  "esgf_erratum_uid": null,
+  "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/860",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP",
+    "ScenarioMIP"
+  ],
+  "validation": "Fresh Gadi CMIP7 and CMIP6 slthick outputs preserve all 65,190 valid layer thicknesses, restore 16,975 ocean-column masks and align with fresh tsl/mrsol coordinates. All 277 focused tests passed.",
+  "implementation_or_validation_pr": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/pull/869",
+  "tested_candidate_commit": "c2711693ed375797d9bf17c0bdd0a0ffb83c6f5d",
+  "dataset_versions_in_scope": 138
+}

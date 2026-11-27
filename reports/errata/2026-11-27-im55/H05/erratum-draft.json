@@ -1,0 +1,38 @@
+{
+  "audit_id": "H05",
+  "title": "Erratum: small negative rain and snowfall values remain in published files",
+  "status": "DRAFT — not submitted to ESGF",
+  "proposed_severity": "High",
+  "model": "ACCESS-ESM1-6",
+  "audit_date": "2026-11-27",
+  "description": "Some physically non-negative precipitation fields contain small negative values. The recent prc/prsn fix stops this in new output, but it does not change files that are already published.",
+  "example": "The largest negative in the audit sample is about −0.00000355 mm/day. That is tiny for a water budget, but a log transform or strict non-negative QC can still fail. This sample does not bound the worst value in the whole archive.",
+  "scientific_evidence": "Negative values occur in 18/30 sampled pr files, 20/20 prc and 24/32 prsn. Minimum values are −1.2132×10⁻²³, −4.1111×10⁻¹¹ and −1.1749×10⁻²¹ kg m⁻² s⁻¹ respectively. The largest absolute sampled negative is about 3.55×10⁻⁶ mm/day. These are sample minima, not bounds on the entire archive.",
+  "impact": "Non-negative-domain algorithms and strict QC can fail. Under ES-DOC’s value-change definition this is High if published values are corrected, although its measured scientific impact and remediation priority are low.",
+  "recommended_action": "Use the final-result floor for ESM1-6 pr and the existing prc/prsn fixes. Preserve missing values and positive sums even when one component is negative. Quantify full-record counts and total water-mass changes; the present manifest includes only datasets with observed negative samples.",
+  "development_team_action": "MOPPy: extend the existing final-result nonnegative floor from #855 to ACCESS-ESM1-6 total precipitation pr. Native monthly/daily samples reproduce the published negatives, but do not establish an upstream model-arithmetic defect or a material water-budget error. No atmosphere-team code change is prescribed from these residues alone. Publication team: schedule complete-record incidence and mass-correction checks before reissuing affected versions.",
+  "affected_dataset_versions": 62,
+  "file_references": 3123,
+  "file_list": "affected-files.txt",
+  "file_list_sha256": "97e4359b2aca9780cf05303d6f2972d2656cd4377a078bfb6f53c4449d6fa9a1",
+  "extent_statement": "Complete file list within the identified release versions; numerical confirmation was sampled, not a scan of every value.",
+  "related_issues_or_prs": [
+    852,
+    855
+  ],
+  "tracking_issue": 861,
+  "replacement_versions": null,
+  "esgf_erratum_uid": null,
+  "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/861",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP",
+    "ScenarioMIP"
+  ],
+  "dataset_versions_in_scope": 62,
+  "validation": "Six fresh Gadi monthly/daily products reproduce the clipped final native result exactly. The pr fix clears one negative monthly cell and 59 daily cells, preserving every nonnegative value; 102 monthly and 406 daily positive prc sums with a negative component remain unchanged. Three extra writer checks preserve missing input as encoded fill. All 293 selected Gadi tests passed; 16 new pr cases failed on the baseline and passed with the fix.",
+  "implementation_or_validation_pr": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/pull/877",
+  "tested_candidate_commit": "4de42fdec3e0456e802e391f51eb7985000115f2"
+}

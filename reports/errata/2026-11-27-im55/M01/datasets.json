@@ -1,0 +1,258 @@
+[
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-bgc/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261119",
+    "variable": "simassacrossline",
+    "branding": "tavg-u-ht-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "1pctCO2-bgc",
+    "member": "r1i1p1f1",
+    "version": "v20261119",
+    "nfiles": 17,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "C4MIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-rad/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261119",
+    "variable": "simassacrossline",
+    "branding": "tavg-u-ht-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "1pctCO2-rad",
+    "member": "r1i1p1f1",
+    "version": "v20261119",
+    "nfiles": 17,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "C4MIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-flat10/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261119",
+    "variable": "simassacrossline",
+    "branding": "tavg-u-ht-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-flat10",
+    "member": "r1i1p1f1",
+    "version": "v20261119",
+    "nfiles": 31,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "C4MIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-flat10-cdr/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261119",
+    "variable": "simassacrossline",
+    "branding": "tavg-u-ht-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-flat10-cdr",
+    "member": "r1i1p1f1",
+    "version": "v20261119",
+    "nfiles": 31,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "C4MIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261119",
+    "variable": "simassacrossline",
+    "branding": "tavg-u-ht-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "1pctCO2",
+    "member": "r1i1p1f1",
+    "version": "v20261119",
+    "nfiles": 17,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/abrupt-4xCO2/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261119",
+    "variable": "simassacrossline",
+    "branding": "tavg-u-ht-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "abrupt-4xCO2",
+    "member": "r1i1p1f1",
+    "version": "v20261119",
+    "nfiles": 33,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/glb/mon/siareaacrossline/tavg-u-ht-u/g118/v20261117",
+    "variable": "siareaacrossline",
+    "branding": "tavg-u-ht-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-piControl",
+    "member": "r1i1p1f1",
+    "version": "v20261117",
+    "nfiles": 102,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/nh/mon/siarea/tavg-u-hm-u/g118/v20261117",
+    "variable": "siarea",
+    "branding": "tavg-u-hm-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "nh",
+    "experiment": "esm-piControl",
+    "member": "r1i1p1f1",
+    "version": "v20261117",
+    "nfiles": 102,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/nh/mon/siextent/tavg-u-hm-u/g118/v20261117",
+    "variable": "siextent",
+    "branding": "tavg-u-hm-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "nh",
+    "experiment": "esm-piControl",
+    "member": "r1i1p1f1",
+    "version": "v20261117",
+    "nfiles": 102,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/sh/mon/siarea/tavg-u-hm-u/g118/v20261117",
+    "variable": "siarea",
+    "branding": "tavg-u-hm-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "sh",
+    "experiment": "esm-piControl",
+    "member": "r1i1p1f1",
+    "version": "v20261117",
+    "nfiles": 102,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/sh/mon/siextent/tavg-u-hm-u/g118/v20261117",
+    "variable": "siextent",
+    "branding": "tavg-u-hm-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "sh",
+    "experiment": "esm-piControl",
+    "member": "r1i1p1f1",
+    "version": "v20261117",
+    "nfiles": 102,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/siareaacrossline/tavg-u-ht-u/g118/v20261117",
+    "variable": "siareaacrossline",
+    "branding": "tavg-u-ht-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "piControl",
+    "member": "r1i1p1f1",
+    "version": "v20261117",
+    "nfiles": 103,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/nh/mon/siarea/tavg-u-hm-u/g118/v20261117",
+    "variable": "siarea",
+    "branding": "tavg-u-hm-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "nh",
+    "experiment": "piControl",
+    "member": "r1i1p1f1",
+    "version": "v20261117",
+    "nfiles": 103,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/nh/mon/siextent/tavg-u-hm-u/g118/v20261117",
+    "variable": "siextent",
+    "branding": "tavg-u-hm-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "nh",
+    "experiment": "piControl",
+    "member": "r1i1p1f1",
+    "version": "v20261117",
+    "nfiles": 103,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/sh/mon/siarea/tavg-u-hm-u/g118/v20261117",
+    "variable": "siarea",
+    "branding": "tavg-u-hm-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "sh",
+    "experiment": "piControl",
+    "member": "r1i1p1f1",
+    "version": "v20261117",
+    "nfiles": 103,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/sh/mon/siextent/tavg-u-hm-u/g118/v20261117",
+    "variable": "siextent",
+    "branding": "tavg-u-hm-u",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "sh",
+    "experiment": "piControl",
+    "member": "r1i1p1f1",
+    "version": "v20261117",
+    "nfiles": 103,
+    "sampled_producer_versions": [
+      "1.9.1"
+    ],
+    "activity_id": "CMIP"
+  }
+]

@@ -1,0 +1,770 @@
+[
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-bgc/r1i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261008",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "1pctCO2-bgc",
+    "member": "r1i1p1f1",
+    "version": "v20261008",
+    "nfiles": 17,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "C4MIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-rad/r1i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261008",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "1pctCO2-rad",
+    "member": "r1i1p1f1",
+    "version": "v20261008",
+    "nfiles": 17,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "C4MIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-flat10/r1i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261007",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-flat10",
+    "member": "r1i1p1f1",
+    "version": "v20261007",
+    "nfiles": 31,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "C4MIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-flat10-cdr/r1i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261008",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-flat10-cdr",
+    "member": "r1i1p1f1",
+    "version": "v20261008",
+    "nfiles": 31,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "C4MIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2/r1i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261007",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "1pctCO2",
+    "member": "r1i1p1f1",
+    "version": "v20261007",
+    "nfiles": 17,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/abrupt-4xCO2/r1i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261007",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "abrupt-4xCO2",
+    "member": "r1i1p1f1",
+    "version": "v20261007",
+    "nfiles": 33,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r10i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r10i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r11i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r11i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r12i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r12i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r13i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r13i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r14i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r14i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r15i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r15i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r16i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r16i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r17i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r17i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r18i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r18i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r19i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r19i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r1i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r1i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r20i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r20i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r21i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r21i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r22i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r22i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r23i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r23i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r24i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r24i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r25i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r25i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r26i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r26i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r27i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r27i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r28i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r28i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r29i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r29i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r2i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r2i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r30i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r30i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r3i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r3i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r4i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r4i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r5i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r5i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r6i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r6i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r7i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r7i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r8i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r8i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r9i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-hist",
+    "member": "r9i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261006",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "esm-piControl",
+    "member": "r1i1p1f1",
+    "version": "v20261006",
+    "nfiles": 112,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r10i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261009",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "historical",
+    "member": "r10i1p1f1",
+    "version": "v20261009",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261008",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "historical",
+    "member": "r1i1p1f1",
+    "version": "v20261008",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r2i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261008",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "historical",
+    "member": "r2i1p1f1",
+    "version": "v20261008",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r3i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261008",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "historical",
+    "member": "r3i1p1f1",
+    "version": "v20261008",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r4i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261008",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "historical",
+    "member": "r4i1p1f1",
+    "version": "v20261008",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r5i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261008",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "historical",
+    "member": "r5i1p1f1",
+    "version": "v20261008",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r6i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261008",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "historical",
+    "member": "r6i1p1f1",
+    "version": "v20261008",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r7i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261008",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "historical",
+    "member": "r7i1p1f1",
+    "version": "v20261008",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r8i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261008",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "historical",
+    "member": "r8i1p1f1",
+    "version": "v20261008",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r9i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261008",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "historical",
+    "member": "r9i1p1f1",
+    "version": "v20261008",
+    "nfiles": 18,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  },
+  {
+    "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/snd/tavg-u-hxy-sn/g118/v20261003",
+    "variable": "snd",
+    "branding": "tavg-u-hxy-sn",
+    "frequency": "mon",
+    "grid": "g118",
+    "region": "glb",
+    "experiment": "piControl",
+    "member": "r1i1p1f1",
+    "version": "v20261003",
+    "nfiles": 103,
+    "sampled_producer_versions": [
+      "1.8.1"
+    ],
+    "activity_id": "CMIP"
+  }
+]

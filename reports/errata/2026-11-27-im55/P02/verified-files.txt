@@ -1,0 +1,2 @@
+/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/tossq/tavg-u-hxy-sea/g118/v20261117/tossq_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010912.nc
+/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-bgc/r1i1p1f1/glb/day/tossq/tavg-u-hxy-sea/g118/v20261119/tossq_tavg-u-hxy-sea_day_glb_g118_ACCESS-ESM1-6_1pctCO2-bgc_r1i1p1f1_02010101-02041231.nc

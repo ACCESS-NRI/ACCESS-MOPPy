@@ -1,0 +1,39 @@
+{
+  "audit_id": "P02",
+  "title": "SST variance is limited by precision in the archived moments",
+  "status": "DRAFT CAUTION — limitation confirmed in two files; release-wide erratum not established",
+  "proposed_severity": "Unassigned pending model replay and broader incidence",
+  "model": "ACCESS-ESM1-6",
+  "audit_date": "2026-11-27",
+  "description": "Mean SST and mean squared SST are rounded separately in the native MOM archive. Subtracting two nearly equal numbers to calculate variance can expose that lost precision. The same small negative variance survives CMORisation.",
+  "example": "January 0101 piControl gives a minimum published variance of −0.0119001 °C². Taking its square root for SST standard deviation gives an invalid result. That does not establish a large error in the SST mean or second moment themselves.",
+  "scientific_evidence": "Four matched records from monthly piControl and daily 1pctCO2-bgc reproduce the published tos/tossq exactly through the fresh Gadi writer. Negative variance is already present in the unpacked float32 Kelvin moments. All 67,113 negative native cell values fit cell-specific final-rounding intervals that include zero, conditional on round-to-nearest storage. This permits a precision explanation; it does not recover true variance or prove that no earlier accumulation error exists.",
+  "impact": "Near-zero within-period variance and derived standard deviation are unresolved in the checked cells. Bulk second-moment corruption, the true variance and release-wide incidence have not been established; a High severity is not justified by this evidence alone.",
+  "recommended_action": "Run a short model replay with consistent float64 moment evaluation, time accumulation and archive precision, and compare against directly accumulated central variance. Preserve the reported moments; do not force tossq to tos² to hide the residual.",
+  "development_team_action": "MOM/model developers: inspect evaluation, accumulation and output precision, and supply a replay/reference central moment. MOPPy developers: retain the reproducible precision diagnostic. Publication team: assess broader incidence before deciding a formal release-wide erratum; the two verified tossq files are listed separately.",
+  "affected_dataset_versions": null,
+  "file_references": 643,
+  "file_list": "candidate-files.txt",
+  "file_list_sha256": "38e5ee7640b19e7ea340ced6fdc8d779abf82907adbbc43260bbc0142681d8a2",
+  "extent_statement": "The candidate list covers 14 versions and 643 files. Only four records in two tossq files have the native/fresh/published precision check; the full candidate list is not a withdrawal list.",
+  "related_issues_or_prs": [
+    769
+  ],
+  "tracking_issue": 863,
+  "replacement_versions": null,
+  "esgf_erratum_uid": null,
+  "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/863",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP"
+  ],
+  "validation": "Four records each contain 69,782 wet and 38,218 masked cells. Fresh and published moments match bit-for-bit with identical grids/time support/masks. Native minima range from −0.011921 to −0.012686 °C²; published minima from −0.011900 to −0.013027 °C². All 19 focused tests passed.",
+  "implementation_or_validation_pr": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/pull/874",
+  "tested_candidate_commit": "cbcb1b993a22d8514f2b87df97fcf0c380d2f869",
+  "verified_file_list": "verified-files.txt",
+  "verified_file_count": 2,
+  "verified_file_list_sha256": "ba1e480d64918b5f5dc84c84de481647b4f76a7132fe2c08b03249c100fec70c",
+  "dataset_versions_in_scope": 14
+}
