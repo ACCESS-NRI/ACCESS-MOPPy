@@ -1,0 +1,361 @@
+{
+  "dataset_versions_sampled": 16,
+  "file_paths_verified": 1171,
+  "file_list_sha256": "ceb2545c394f115d098c58bc1823245ffd0e92fa86996d1e2de285ef6b899a27",
+  "python_version": "3.12.13",
+  "netcdf4_version": "1.7.2",
+  "coordinate_sample_indices_zero_based_j_i": [
+    [
+      0,
+      0
+    ],
+    [
+      60,
+      120
+    ],
+    [
+      240,
+      90
+    ],
+    [
+      270,
+      240
+    ],
+    [
+      299,
+      359
+    ]
+  ],
+  "parent_grid_checks": {
+    "1pctCO2-bgc": {
+      "native_cice_file": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/1pctCO2-bgc-01/output000/ice/iceh-1daily-mean_0201-01.nc",
+      "published_siconc_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-bgc/r1i1p1f1/glb/day/siconc/tavg-u-hxy-u/g118/v20261019/siconc_tavg-u-hxy-u_day_glb_g118_ACCESS-ESM1-6_1pctCO2-bgc_r1i1p1f1_02010101-02041231.nc",
+      "grid_label": "g118",
+      "horizontal_shape": [
+        300,
+        360
+      ],
+      "max_abs_probe_difference_degrees": {
+        "latitude": 3.2592893290939173e-06,
+        "longitude": 1.1074016583734192e-05
+      }
+    },
+    "1pctCO2-rad": {
+      "native_cice_file": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/1pctCO2-rad-01/output000/ice/iceh-1daily-mean_0201-01.nc",
+      "published_siconc_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-rad/r1i1p1f1/glb/day/siconc/tavg-u-hxy-u/g118/v20261019/siconc_tavg-u-hxy-u_day_glb_g118_ACCESS-ESM1-6_1pctCO2-rad_r1i1p1f1_02010101-02041231.nc",
+      "grid_label": "g118",
+      "horizontal_shape": [
+        300,
+        360
+      ],
+      "max_abs_probe_difference_degrees": {
+        "latitude": 3.2592893290939173e-06,
+        "longitude": 1.1074016583734192e-05
+      }
+    },
+    "esm-flat10": {
+      "native_cice_file": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/esm-flat10/output000/ice/iceh-1daily-mean_0201-01.nc",
+      "published_siconc_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-flat10/r1i1p1f1/glb/day/siconc/tavg-u-hxy-u/g118/v20261019/siconc_tavg-u-hxy-u_day_glb_g118_ACCESS-ESM1-6_esm-flat10_r1i1p1f1_02010101-02041231.nc",
+      "grid_label": "g118",
+      "horizontal_shape": [
+        300,
+        360
+      ],
+      "max_abs_probe_difference_degrees": {
+        "latitude": 3.2592893290939173e-06,
+        "longitude": 1.1074016583734192e-05
+      }
+    },
+    "esm-flat10-cdr": {
+      "native_cice_file": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/esm-flat10-cdr/flat10-cdr-01-esm-flat10-cdr-2026-06-02-05321bca/output000/ice/iceh-1daily-mean_0301-01.nc",
+      "published_siconc_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-flat10-cdr/r1i1p1f1/glb/day/siconc/tavg-u-hxy-u/g118/v20261019/siconc_tavg-u-hxy-u_day_glb_g118_ACCESS-ESM1-6_esm-flat10-cdr_r1i1p1f1_03010101-03041231.nc",
+      "grid_label": "g118",
+      "horizontal_shape": [
+        300,
+        360
+      ],
+      "max_abs_probe_difference_degrees": {
+        "latitude": 3.2592893290939173e-06,
+        "longitude": 1.1074016583734192e-05
+      }
+    },
+    "1pctCO2": {
+      "native_cice_file": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/1pctCO2-01-original/output000/ice/iceh-1daily-mean_0201-01.nc",
+      "published_siconc_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2/r1i1p1f1/glb/day/siconc/tavg-u-hxy-u/g118/v20261019/siconc_tavg-u-hxy-u_day_glb_g118_ACCESS-ESM1-6_1pctCO2_r1i1p1f1_02010101-02041231.nc",
+      "grid_label": "g118",
+      "horizontal_shape": [
+        300,
+        360
+      ],
+      "max_abs_probe_difference_degrees": {
+        "latitude": 3.2592893290939173e-06,
+        "longitude": 1.1074016583734192e-05
+      }
+    },
+    "abrupt-4xCO2": {
+      "native_cice_file": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/abrupt-4xCO2/output000/ice/iceh-1daily-mean_0201-01.nc",
+      "published_siconc_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/abrupt-4xCO2/r1i1p1f1/glb/day/siconc/tavg-u-hxy-u/g118/v20261025/siconc_tavg-u-hxy-u_day_glb_g118_ACCESS-ESM1-6_abrupt-4xCO2_r1i1p1f1_02010101-02041231.nc",
+      "grid_label": "g118",
+      "horizontal_shape": [
+        300,
+        360
+      ],
+      "max_abs_probe_difference_degrees": {
+        "latitude": 3.2592893290939173e-06,
+        "longitude": 1.1074016583734192e-05
+      }
+    },
+    "esm-piControl": {
+      "native_cice_file": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-emissions/output100/ice/iceh-1monthly-mean_0101-01.nc",
+      "published_siconc_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/glb/mon/siconc/tavg-u-hxy-u/g118/v20261006/siconc_tavg-u-hxy-u_mon_glb_g118_ACCESS-ESM1-6_esm-piControl_r1i1p1f1_000101-000912.nc",
+      "grid_label": "g118",
+      "horizontal_shape": [
+        300,
+        360
+      ],
+      "max_abs_probe_difference_degrees": {
+        "latitude": 3.2592893290939173e-06,
+        "longitude": 1.1074016583734192e-05
+      }
+    },
+    "piControl": {
+      "native_cice_file": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/ice/iceh-1monthly-mean_0101-01.nc",
+      "published_siconc_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/siconc/tavg-u-hxy-u/g118/v20261001/siconc_tavg-u-hxy-u_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010912.nc",
+      "grid_label": "g118",
+      "horizontal_shape": [
+        300,
+        360
+      ],
+      "max_abs_probe_difference_degrees": {
+        "latitude": 3.2592893290939173e-06,
+        "longitude": 1.1074016583734192e-05
+      }
+    }
+  },
+  "reduced_product_samples": [
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-bgc/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261119/simassacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_1pctCO2-bgc_r1i1p1f1_020101-020912.nc",
+      "file_count": 17,
+      "horizontal_label": "ht",
+      "region": "glb",
+      "grid_label": "g118",
+      "dimensions": [
+        "time",
+        "line"
+      ],
+      "line_labels": [
+        "fram_strait",
+        "canadian_archipelago",
+        "barents_opening",
+        "bering_strait"
+      ]
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-rad/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261119/simassacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_1pctCO2-rad_r1i1p1f1_020101-020912.nc",
+      "file_count": 17,
+      "horizontal_label": "ht",
+      "region": "glb",
+      "grid_label": "g118",
+      "dimensions": [
+        "time",
+        "line"
+      ],
+      "line_labels": [
+        "fram_strait",
+        "canadian_archipelago",
+        "barents_opening",
+        "bering_strait"
+      ]
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-flat10/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261119/simassacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_esm-flat10_r1i1p1f1_020101-020912.nc",
+      "file_count": 31,
+      "horizontal_label": "ht",
+      "region": "glb",
+      "grid_label": "g118",
+      "dimensions": [
+        "time",
+        "line"
+      ],
+      "line_labels": [
+        "fram_strait",
+        "canadian_archipelago",
+        "barents_opening",
+        "bering_strait"
+      ]
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-flat10-cdr/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261119/simassacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_esm-flat10-cdr_r1i1p1f1_030101-030912.nc",
+      "file_count": 31,
+      "horizontal_label": "ht",
+      "region": "glb",
+      "grid_label": "g118",
+      "dimensions": [
+        "time",
+        "line"
+      ],
+      "line_labels": [
+        "fram_strait",
+        "canadian_archipelago",
+        "barents_opening",
+        "bering_strait"
+      ]
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261119/simassacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_1pctCO2_r1i1p1f1_020101-020912.nc",
+      "file_count": 17,
+      "horizontal_label": "ht",
+      "region": "glb",
+      "grid_label": "g118",
+      "dimensions": [
+        "time",
+        "line"
+      ],
+      "line_labels": [
+        "fram_strait",
+        "canadian_archipelago",
+        "barents_opening",
+        "bering_strait"
+      ]
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/abrupt-4xCO2/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261119/simassacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_abrupt-4xCO2_r1i1p1f1_020101-020912.nc",
+      "file_count": 33,
+      "horizontal_label": "ht",
+      "region": "glb",
+      "grid_label": "g118",
+      "dimensions": [
+        "time",
+        "line"
+      ],
+      "line_labels": [
+        "fram_strait",
+        "canadian_archipelago",
+        "barents_opening",
+        "bering_strait"
+      ]
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/glb/mon/siareaacrossline/tavg-u-ht-u/g118/v20261117/siareaacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_esm-piControl_r1i1p1f1_010101-010912.nc",
+      "file_count": 102,
+      "horizontal_label": "ht",
+      "region": "glb",
+      "grid_label": "g118",
+      "dimensions": [
+        "time",
+        "line"
+      ],
+      "line_labels": [
+        "fram_strait",
+        "canadian_archipelago",
+        "barents_opening",
+        "bering_strait"
+      ]
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/nh/mon/siarea/tavg-u-hm-u/g118/v20261117/siarea_tavg-u-hm-u_mon_nh_g118_ACCESS-ESM1-6_esm-piControl_r1i1p1f1_010101-010912.nc",
+      "file_count": 102,
+      "horizontal_label": "hm",
+      "region": "nh",
+      "grid_label": "g118",
+      "dimensions": [
+        "time"
+      ],
+      "line_labels": []
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/sh/mon/siarea/tavg-u-hm-u/g118/v20261117/siarea_tavg-u-hm-u_mon_sh_g118_ACCESS-ESM1-6_esm-piControl_r1i1p1f1_010101-010912.nc",
+      "file_count": 102,
+      "horizontal_label": "hm",
+      "region": "sh",
+      "grid_label": "g118",
+      "dimensions": [
+        "time"
+      ],
+      "line_labels": []
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/nh/mon/siextent/tavg-u-hm-u/g118/v20261117/siextent_tavg-u-hm-u_mon_nh_g118_ACCESS-ESM1-6_esm-piControl_r1i1p1f1_010101-010912.nc",
+      "file_count": 102,
+      "horizontal_label": "hm",
+      "region": "nh",
+      "grid_label": "g118",
+      "dimensions": [
+        "time"
+      ],
+      "line_labels": []
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/sh/mon/siextent/tavg-u-hm-u/g118/v20261117/siextent_tavg-u-hm-u_mon_sh_g118_ACCESS-ESM1-6_esm-piControl_r1i1p1f1_010101-010912.nc",
+      "file_count": 102,
+      "horizontal_label": "hm",
+      "region": "sh",
+      "grid_label": "g118",
+      "dimensions": [
+        "time"
+      ],
+      "line_labels": []
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/siareaacrossline/tavg-u-ht-u/g118/v20261117/siareaacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010912.nc",
+      "file_count": 103,
+      "horizontal_label": "ht",
+      "region": "glb",
+      "grid_label": "g118",
+      "dimensions": [
+        "time",
+        "line"
+      ],
+      "line_labels": [
+        "fram_strait",
+        "canadian_archipelago",
+        "barents_opening",
+        "bering_strait"
+      ]
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/nh/mon/siarea/tavg-u-hm-u/g118/v20261117/siarea_tavg-u-hm-u_mon_nh_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010912.nc",
+      "file_count": 103,
+      "horizontal_label": "hm",
+      "region": "nh",
+      "grid_label": "g118",
+      "dimensions": [
+        "time"
+      ],
+      "line_labels": []
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/sh/mon/siarea/tavg-u-hm-u/g118/v20261117/siarea_tavg-u-hm-u_mon_sh_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010912.nc",
+      "file_count": 103,
+      "horizontal_label": "hm",
+      "region": "sh",
+      "grid_label": "g118",
+      "dimensions": [
+        "time"
+      ],
+      "line_labels": []
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/nh/mon/siextent/tavg-u-hm-u/g118/v20261117/siextent_tavg-u-hm-u_mon_nh_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010912.nc",
+      "file_count": 103,
+      "horizontal_label": "hm",
+      "region": "nh",
+      "grid_label": "g118",
+      "dimensions": [
+        "time"
+      ],
+      "line_labels": []
+    },
+    {
+      "sample_file": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/sh/mon/siextent/tavg-u-hm-u/g118/v20261117/siextent_tavg-u-hm-u_mon_sh_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010912.nc",
+      "file_count": 103,
+      "horizontal_label": "hm",
+      "region": "sh",
+      "grid_label": "g118",
+      "dimensions": [
+        "time"
+      ],
+      "line_labels": []
+    }
+  ]
+}
