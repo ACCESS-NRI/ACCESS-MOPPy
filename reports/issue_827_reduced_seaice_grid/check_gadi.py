@@ -67,12 +67,12 @@ def check_parent(member, native, frequency, version):
         differences = {}
         for native_name, reported_name in (("TLAT", "latitude"), ("TLON", "longitude")):
             ncoord, pcoord = source[native_name], parent[reported_name]
-            assert ncoord.dimensions == ("nj", "ni") and ncoord.shape == GRID_SHAPE, (
-                native
-            )
-            assert pcoord.dimensions == ("j", "i") and pcoord.shape == GRID_SHAPE, (
-                published
-            )
+            assert (
+                ncoord.dimensions == ("nj", "ni") and ncoord.shape == GRID_SHAPE
+            ), native
+            assert (
+                pcoord.dimensions == ("j", "i") and pcoord.shape == GRID_SHAPE
+            ), published
             assert ncoord.units == pcoord.units, (native, published, reported_name)
             delta = np.array(
                 [float(pcoord[j, i]) - float(ncoord[j, i]) for j, i in POINTS]
