@@ -6867,13 +6867,19 @@
                 "type": "formula",
                 "operation": "divide",
                 "args": [
-                    "no3",
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "no3",
+                            0.001
+                        ]
+                    },
                     16.0
                 ]
             },
             "CF standard Name": "mole_concentration_of_dissolved_inorganic_phosphorus_in_sea_water",
             "model_variable_units": {
-                "no3": "mol kg-1"
+                "no3": "mmol m-3"
             }
         },
         "spco2": {
