@@ -1,4 +1,4 @@
-"""Numerical regressions for convective precipitation and snowfall bounds."""
+"""Numerical regressions for precipitation bounds."""
 
 from unittest.mock import Mock
 
@@ -11,28 +11,22 @@ from access_moppy.utilities import load_model_mappings
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("model_id", ["ACCESS-ESM1-5", "ACCESS-ESM1-6"])
+@pytest.mark.parametrize(
+    ("model_id", "name"),
+    [
+        ("ACCESS-ESM1-5", "prc"),
+        ("ACCESS-ESM1-5", "prsn"),
+        ("ACCESS-ESM1-6", "pr"),
+        ("ACCESS-ESM1-6", "prc"),
+        ("ACCESS-ESM1-6", "prsn"),
+    ],
+)
 @pytest.mark.parametrize("table,frequency", [("day", "day"), ("Amon", "mon")])
 @pytest.mark.parametrize("mip_era", ["CMIP6", "CMIP7"])
 @pytest.mark.parametrize("lazy", [False, True], ids=["eager", "dask"])
 @pytest.mark.parametrize("dtype", ["float32", "float64"])
-@pytest.mark.parametrize(
-    ("name", "raw_values"),
-    [
-        (
-            "prc",
-            {
-                # Clipping the negative component of the fifth cell separately
-                # would inflate the positive sum from 2e-5 to 3e-5.
-                "fld_s05i205": [-1e-12, 0, 1e-5, np.nan, -1e-5, 1e-5],
-                "fld_s05i206": [0, 0, 3e-5, 1e-5, 3e-5, np.nan],
-            },
-        ),
-        ("prsn", {"fld_s05i215": [-1e-12, 0, 4e-5, np.nan, 2e-5, np.nan]}),
-    ],
-)
 def test_precipitation_is_nonnegative_and_preserves_missing_values(
-    model_id, table, frequency, mip_era, lazy, dtype, name, raw_values, tmp_path
+    model_id, table, frequency, mip_era, lazy, dtype, name, tmp_path
 ):
     compound_name = f"{table}.{name}"
     mapping_name = (
@@ -42,6 +36,16 @@ def test_precipitation_is_nonnegative_and_preserves_missing_values(
     )
     mapping = load_model_mappings(mapping_name, model_id)
 
+    raw_values = {
+        "pr": {"fld_s05i216": [-1e-23, 0, 4e-5, np.nan, 2e-5, np.nan]},
+        "prc": {
+            # Clipping the negative component of the fifth cell separately
+            # would inflate the positive sum from 2e-5 to 3e-5.
+            "fld_s05i205": [-1e-12, 0, 1e-5, np.nan, -1e-5, 1e-5],
+            "fld_s05i206": [0, 0, 3e-5, 1e-5, 3e-5, np.nan],
+        },
+        "prsn": {"fld_s05i215": [-1e-12, 0, 4e-5, np.nan, 2e-5, np.nan]},
+    }[name]
     dims = ("time", "lat", "lon")
     coords = {"time": [0], "lat": [-30.0], "lon": np.arange(6)}
     raw = xr.Dataset(
