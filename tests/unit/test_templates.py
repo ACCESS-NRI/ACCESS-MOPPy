@@ -1,4 +1,5 @@
 from importlib.resources import files
+from textwrap import dedent
 
 import pytest
 from jinja2 import Template
@@ -83,6 +84,84 @@ if __name__ == "__main__":
         assert "mappings need no input files" in rendered
         assert "cannot be used for self-contained mappings" not in rendered
         assert "enforce_compliance" not in rendered
+
+    @pytest.mark.unit
+    def test_worker_template_resume_check_uses_compound_mapping(self):
+        """The resume check must resolve the variable unambiguously.
+
+        A bare short name such as ``rsds`` maps to more than one recipe and
+        ``load_variable_entry`` raises ``Ambiguous mapping`` for it. The
+        resume check has to pass the compound ``table.variable`` name instead,
+        and must honour ``calculation_overrides`` for the output CMIP version
+        just like the normal mapping path does.
+        """
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="Amon.rsds",
+            config={"resume": True},
+            db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/Amon_rsds",
+            package_path=".",
+        )
+        compile(rendered, str(template_path), "exec")
+
+        # The old check passed only the bare short name and raised
+        # ValueError: Ambiguous mapping for 'rsds'.
+        assert "discovery_name.split('.')[1]" not in rendered
+        assert "load_model_mappings(" in rendered
+        # Resumability must come from the same mapping the worker uses,
+        # including calculation_overrides for the output CMIP version.
+        assert "discovery_name, model_id, cmip_version=cmip_version" in rendered
+        # The bare-name lookup that raised Ambiguous mapping is gone.
+        assert "load_variable_entry(discovery_name.split('.')[1]" not in rendered
+
+    @pytest.mark.unit
+    def test_resume_check_resolves_ambiguous_and_non_resumable_variables(self):
+        """Execute the rendered resume check against real mappings.
+
+        Before the fix the check resolved a bare short name and raised
+        ``ValueError: Ambiguous mapping`` for any variable with several
+        recipes (e.g. ``rsds``). It must instead resolve the compound name
+        and still detect calculations marked ``resumable: false``.
+        """
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="Amon.rsds",
+            config={"resume": True},
+            db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/Amon_rsds",
+            package_path=".",
+        )
+
+        start = rendered.index(
+            "                # A calculation whose values at one time depend"
+        )
+        end = rendered.index(
+            "            if resume:\n                from access_moppy.batch_cmoriser"
+        )
+        block = dedent(rendered[start:end])
+
+        def run(discovery_name, cmip_version):
+            namespace = {
+                "discovery_name": discovery_name,
+                "model_id": "ACCESS-ESM1-6",
+                "cmip_version": cmip_version,
+                "variable": discovery_name,
+                "resume": True,
+            }
+            exec(block, namespace)
+            return namespace["resume"]
+
+        # An ambiguous short name must no longer crash the worker.
+        assert run("Amon.rsds", "CMIP6") is True
+        # A calculation that is not local in time still disables resume.
+        assert run("Omon.zostoga", "CMIP6") is False
+        # CMIP7 branded compound names resolve through the same path.
+        assert run("atmos.rsds.tavg-u-hxy-u.mon.glb", "CMIP7") is True
 
     @pytest.mark.unit
     def test_worker_template_passes_access_consortium_publication_profile(self):
@@ -299,9 +378,9 @@ if __name__ == "__main__":
         )
 
         for forbidden in ("TaskTracker", "tracking", "sqlite", "CMOR_TRACKER_DB"):
-            assert (
-                forbidden not in rendered
-            ), f"generated worker reaches the database via {forbidden!r}"
+            assert forbidden not in rendered, (
+                f"generated worker reaches the database via {forbidden!r}"
+            )
         assert "TaskStatusFile(" in rendered
 
     @pytest.mark.unit
