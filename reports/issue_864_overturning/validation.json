@@ -1,0 +1,1047 @@
+{
+  "basin_mask": {
+    "sha256": "9027d879d73ccbde54c1e5295def2025106c1a6a6a0a540ae23ca3b28c5cf8fc",
+    "shape": [
+      300,
+      360
+    ],
+    "code_counts": {
+      "1": 18288,
+      "2": 10477,
+      "3": 22658,
+      "4": 9361,
+      "5": 8017,
+      "6": 281,
+      "8": 515,
+      "9": 126,
+      "10": 59
+    },
+    "masked_cells": 38218,
+    "basins": {
+      "atlantic_arctic_ocean": [
+        2,
+        4
+      ],
+      "indian_pacific_ocean": [
+        3,
+        5
+      ],
+      "global_ocean": []
+    }
+  },
+  "supergrid": {
+    "path": "/g/data/xp65/public/apps/access_moppy_data/grids/mom1deg.nc",
+    "sha256": "30ca961a460fb67a8a83b6bd912f6b67a0b94f386d92ddfb1b79d7c021d7f8ee"
+  },
+  "cases": {
+    "1pctCO2-bgc": {
+      "grid_checks": {
+        "basin_mask_t_y_max_difference_degrees": 3.7984813729963207e-06,
+        "basin_mask_t_x_max_difference_degrees": 0.0,
+        "supergrid_t_y_max_difference_degrees": 3.8136018787326975e-06,
+        "supergrid_corner_y_max_difference_degrees": 3.8138563667189374e-06
+      },
+      "native_psiv": {
+        "dimensions": [
+          "time",
+          "yu_ocean",
+          "xt_ocean"
+        ],
+        "shape": [
+          12,
+          300,
+          360
+        ],
+        "long_name": "quasi-barotropic strmfcn psiv (compatible with ty_trans)",
+        "units": "kg/s"
+      },
+      "ol": {
+        "native": {
+          "ty_trans": {
+            "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/1pctCO2-bgc-01/output000/ocean/ocean-3d-ty_trans-1mon-mean-y_0201.nc",
+            "dimensions": [
+              "time",
+              "st_ocean",
+              "yu_ocean",
+              "xt_ocean"
+            ],
+            "shape": [
+              12,
+              50,
+              300,
+              360
+            ],
+            "long_name": "T-cell j-mass transport",
+            "units": "kg/s"
+          },
+          "ty_trans_gm": {
+            "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/1pctCO2-bgc-01/output000/ocean/ocean-3d-ty_trans_gm-1mon-mean-y_0201.nc",
+            "dimensions": [
+              "time",
+              "st_ocean",
+              "yu_ocean",
+              "xt_ocean"
+            ],
+            "shape": [
+              12,
+              50,
+              300,
+              360
+            ],
+            "long_name": "T-cell mass j-transport from GM",
+            "units": "kg/s"
+          },
+          "ty_trans_submeso": {
+            "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/1pctCO2-bgc-01/output000/ocean/ocean-3d-ty_trans_submeso-1mon-mean-y_0201.nc",
+            "dimensions": [
+              "time",
+              "st_ocean",
+              "yu_ocean",
+              "xt_ocean"
+            ],
+            "shape": [
+              12,
+              50,
+              300,
+              360
+            ],
+            "long_name": "T-cell mass j-transport from submesoscale param",
+            "units": "kg/s"
+          }
+        },
+        "available_native_i_transport_files": {
+          "tx_trans": [
+            "ocean-3d-tx_trans-1mon-mean-y_0201.nc"
+          ],
+          "tx_trans_gm": [
+            "ocean-3d-tx_trans_gm-1mon-mean-y_0201.nc"
+          ],
+          "tx_trans_submeso": [
+            "ocean-3d-tx_trans_submeso-1mon-mean-y_0201.nc"
+          ]
+        },
+        "published": {
+          "msftm": {
+            "path": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-bgc/r1i1p1f1/glb/mon/msftm/tavg-ol-hyb-sea/g116/v20261119/msftm_tavg-ol-hyb-sea_mon_glb_g116_ACCESS-ESM1-6_1pctCO2-bgc_r1i1p1f1_020101-020912.nc",
+            "grid_label": "g116",
+            "horizontal_label": "hyb",
+            "nominal_resolution": "100 km",
+            "native_sample_time": 73063.5,
+            "time_units": "days since 0001-01-01 00:00:00",
+            "calendar": "proleptic_gregorian",
+            "variable": {
+              "dimensions": [
+                "time",
+                "basin",
+                "lev",
+                "lat"
+              ],
+              "shape": [
+                108,
+                3,
+                50,
+                300
+              ],
+              "standard_name": "ocean_meridional_overturning_mass_streamfunction",
+              "units": "kg s-1",
+              "cell_methods": "depth: longitude: sum where sea (along a zig-zag grid path spanning a basin)  time: mean"
+            },
+            "latitude": {
+              "dimensions": [
+                "lat"
+              ],
+              "shape": [
+                300
+              ],
+              "standard_name": "latitude",
+              "units": "degrees_north",
+              "bounds": "lat_bnds",
+              "matches_native_coordinate": true,
+              "range": [
+                -77.7531683885388,
+                90.0
+              ],
+              "spacing_range": [
+                0.24745833347262192,
+                0.9999216352920364
+              ],
+              "northern_bound": 90.0
+            }
+          },
+          "msfty": {
+            "path": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-bgc/r1i1p1f1/glb/mon/msfty/tavg-ol-ht-sea/g116/v20261119/msfty_tavg-ol-ht-sea_mon_glb_g116_ACCESS-ESM1-6_1pctCO2-bgc_r1i1p1f1_020101-020912.nc",
+            "grid_label": "g116",
+            "horizontal_label": "ht",
+            "nominal_resolution": "100 km",
+            "native_sample_time": 73063.5,
+            "time_units": "days since 0001-01-01 00:00:00",
+            "calendar": "proleptic_gregorian",
+            "variable": {
+              "dimensions": [
+                "time",
+                "basin",
+                "lev",
+                "rlat"
+              ],
+              "shape": [
+                108,
+                3,
+                50,
+                300
+              ],
+              "standard_name": "ocean_y_overturning_mass_streamfunction",
+              "units": "kg s-1",
+              "cell_methods": "grid_longitude: sum where sea time: mean"
+            },
+            "latitude": {
+              "dimensions": [
+                "rlat"
+              ],
+              "shape": [
+                300
+              ],
+              "standard_name": "grid_latitude",
+              "units": "degrees",
+              "bounds": "rlat_bnds",
+              "matches_native_coordinate": true,
+              "range": [
+                -77.7531683885388,
+                90.0
+              ],
+              "spacing_range": [
+                0.24745833347262192,
+                0.9999216352920364
+              ],
+              "northern_bound": 90.0
+            }
+          }
+        },
+        "published_pair_full_file": {
+          "finite_pairs": 3546828,
+          "mask_differences": 0,
+          "exact_values_and_masks": true,
+          "max_abs_difference_kg_s": 0.0,
+          "exact_time_coordinates": true
+        },
+        "native_reconstruction": {
+          "msftm": {
+            "finite_pairs": 591,
+            "mask_differences": 0,
+            "exact_values_and_masks": true,
+            "max_abs_difference_kg_s": 0.0
+          },
+          "msfty": {
+            "finite_pairs": 591,
+            "mask_differences": 0,
+            "exact_values_and_masks": true,
+            "max_abs_difference_kg_s": 0.0
+          }
+        },
+        "geometry": {
+          "atlantic_arctic_ocean": [
+            {
+              "j": 200,
+              "nominal_latitude": 33.987858440242505,
+              "wet_faces": 71,
+              "min_face_midpoint_latitude": 33.987858440242505,
+              "max_face_midpoint_latitude": 33.987858440242505,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 240,
+              "nominal_latitude": 63.15452510690917,
+              "wet_faces": 64,
+              "min_face_midpoint_latitude": 63.15452510690917,
+              "max_face_midpoint_latitude": 63.15452510690917,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 250,
+              "nominal_latitude": 67.74956072461234,
+              "wet_faces": 70,
+              "min_face_midpoint_latitude": 66.66679108914755,
+              "max_face_midpoint_latitude": 67.74946074181145,
+              "wet_faces_more_than_one_degree_away": 3
+            },
+            {
+              "j": 270,
+              "nominal_latitude": 76.88426210106635,
+              "wet_faces": 194,
+              "min_face_midpoint_latitude": 69.9060275613836,
+              "max_face_midpoint_latitude": 76.88383510254589,
+              "wet_faces_more_than_one_degree_away": 116
+            },
+            {
+              "j": 285,
+              "nominal_latitude": 83.68392638183889,
+              "wet_faces": 208,
+              "min_face_midpoint_latitude": 72.27425967519278,
+              "max_face_midpoint_latitude": 83.68296140834309,
+              "wet_faces_more_than_one_degree_away": 149
+            },
+            {
+              "j": 299,
+              "nominal_latitude": 90.0,
+              "wet_faces": 262,
+              "min_face_midpoint_latitude": 72.51339508581536,
+              "max_face_midpoint_latitude": 89.8891519997889,
+              "wet_faces_more_than_one_degree_away": 242
+            }
+          ],
+          "indian_pacific_ocean": [
+            {
+              "j": 200,
+              "nominal_latitude": 33.987858440242505,
+              "wet_faces": 117,
+              "min_face_midpoint_latitude": 33.987858440242505,
+              "max_face_midpoint_latitude": 33.987858440242505,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 240,
+              "nominal_latitude": 63.15452510690917,
+              "wet_faces": 16,
+              "min_face_midpoint_latitude": 63.15452510690917,
+              "max_face_midpoint_latitude": 63.15452510690917,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 250,
+              "nominal_latitude": 67.74956072461234,
+              "wet_faces": 0,
+              "min_face_midpoint_latitude": null,
+              "max_face_midpoint_latitude": null,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 270,
+              "nominal_latitude": 76.88426210106635,
+              "wet_faces": 0,
+              "min_face_midpoint_latitude": null,
+              "max_face_midpoint_latitude": null,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 285,
+              "nominal_latitude": 83.68392638183889,
+              "wet_faces": 0,
+              "min_face_midpoint_latitude": null,
+              "max_face_midpoint_latitude": null,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 299,
+              "nominal_latitude": 90.0,
+              "wet_faces": 0,
+              "min_face_midpoint_latitude": null,
+              "max_face_midpoint_latitude": null,
+              "wet_faces_more_than_one_degree_away": 0
+            }
+          ],
+          "global_ocean": [
+            {
+              "j": 200,
+              "nominal_latitude": 33.987858440242505,
+              "wet_faces": 212,
+              "min_face_midpoint_latitude": 33.987858440242505,
+              "max_face_midpoint_latitude": 33.987858440242505,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 240,
+              "nominal_latitude": 63.15452510690917,
+              "wet_faces": 106,
+              "min_face_midpoint_latitude": 63.15452510690917,
+              "max_face_midpoint_latitude": 63.15452510690917,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 250,
+              "nominal_latitude": 67.74956072461234,
+              "wet_faces": 79,
+              "min_face_midpoint_latitude": 65.85508157372084,
+              "max_face_midpoint_latitude": 67.74946074181145,
+              "wet_faces_more_than_one_degree_away": 12
+            },
+            {
+              "j": 270,
+              "nominal_latitude": 76.88426210106635,
+              "wet_faces": 194,
+              "min_face_midpoint_latitude": 69.9060275613836,
+              "max_face_midpoint_latitude": 76.88383510254589,
+              "wet_faces_more_than_one_degree_away": 116
+            },
+            {
+              "j": 285,
+              "nominal_latitude": 83.68392638183889,
+              "wet_faces": 208,
+              "min_face_midpoint_latitude": 72.27425967519278,
+              "max_face_midpoint_latitude": 83.68296140834309,
+              "wet_faces_more_than_one_degree_away": 149
+            },
+            {
+              "j": 299,
+              "nominal_latitude": 90.0,
+              "wet_faces": 262,
+              "min_face_midpoint_latitude": 72.51339508581536,
+              "max_face_midpoint_latitude": 89.8891519997889,
+              "wet_faces_more_than_one_degree_away": 242
+            }
+          ]
+        }
+      },
+      "rho": {
+        "native": {
+          "ty_trans_rho": {
+            "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/1pctCO2-bgc-01/output000/ocean/ocean-3d-ty_trans_rho-1mon-mean-y_0201.nc",
+            "dimensions": [
+              "time",
+              "potrho",
+              "grid_yu_ocean",
+              "grid_xt_ocean"
+            ],
+            "shape": [
+              12,
+              80,
+              300,
+              360
+            ],
+            "long_name": "T-cell j-mass transport on pot_rho",
+            "units": "kg/s"
+          },
+          "ty_trans_rho_gm": {
+            "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/1pctCO2-bgc-01/output000/ocean/ocean-3d-ty_trans_rho_gm-1mon-mean-y_0201.nc",
+            "dimensions": [
+              "time",
+              "potrho",
+              "grid_yu_ocean",
+              "grid_xt_ocean"
+            ],
+            "shape": [
+              12,
+              80,
+              300,
+              360
+            ],
+            "long_name": "T-cell j-mass transport from GM on pot_rho",
+            "units": "kg/s"
+          }
+        },
+        "available_native_i_transport_files": {
+          "tx_trans_rho": [
+            "ocean-3d-tx_trans_rho-1yr-mean-y_0201.nc"
+          ],
+          "tx_trans_rho_gm": [
+            "ocean-3d-tx_trans_rho_gm-1yr-mean-y_0201.nc"
+          ]
+        },
+        "published": {
+          "msftm": {
+            "path": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-bgc/r1i1p1f1/glb/mon/msftm/tavg-rho-hyb-sea/g116/v20261119/msftm_tavg-rho-hyb-sea_mon_glb_g116_ACCESS-ESM1-6_1pctCO2-bgc_r1i1p1f1_020101-020912.nc",
+            "grid_label": "g116",
+            "horizontal_label": "hyb",
+            "nominal_resolution": "100 km",
+            "native_sample_time": 73063.5,
+            "time_units": "days since 0001-01-01 00:00:00",
+            "calendar": "proleptic_gregorian",
+            "variable": {
+              "dimensions": [
+                "time",
+                "basin",
+                "rho",
+                "lat"
+              ],
+              "shape": [
+                108,
+                3,
+                80,
+                300
+              ],
+              "standard_name": "ocean_meridional_overturning_mass_streamfunction",
+              "units": "kg s-1",
+              "cell_methods": "depth: longitude: sum where sea (along a zig-zag grid path spanning a basin)  time: mean"
+            },
+            "latitude": {
+              "dimensions": [
+                "lat"
+              ],
+              "shape": [
+                300
+              ],
+              "standard_name": "latitude",
+              "units": "degrees_north",
+              "bounds": "lat_bnds",
+              "matches_native_coordinate": true,
+              "range": [
+                -77.7531683885388,
+                90.0
+              ],
+              "spacing_range": [
+                0.24745833347262192,
+                0.9999216352920364
+              ],
+              "northern_bound": 90.0
+            }
+          },
+          "msfty": {
+            "path": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-bgc/r1i1p1f1/glb/mon/msfty/tavg-rho-ht-sea/g116/v20261119/msfty_tavg-rho-ht-sea_mon_glb_g116_ACCESS-ESM1-6_1pctCO2-bgc_r1i1p1f1_020101-020912.nc",
+            "grid_label": "g116",
+            "horizontal_label": "ht",
+            "nominal_resolution": "100 km",
+            "native_sample_time": 73063.5,
+            "time_units": "days since 0001-01-01 00:00:00",
+            "calendar": "proleptic_gregorian",
+            "variable": {
+              "dimensions": [
+                "time",
+                "basin",
+                "rho",
+                "rlat"
+              ],
+              "shape": [
+                108,
+                3,
+                80,
+                300
+              ],
+              "standard_name": "ocean_y_overturning_mass_streamfunction",
+              "units": "kg s-1",
+              "cell_methods": "grid_longitude: sum where sea time: mean"
+            },
+            "latitude": {
+              "dimensions": [
+                "rlat"
+              ],
+              "shape": [
+                300
+              ],
+              "standard_name": "grid_latitude",
+              "units": "degrees",
+              "bounds": "rlat_bnds",
+              "matches_native_coordinate": true,
+              "range": [
+                -77.7531683885388,
+                90.0
+              ],
+              "spacing_range": [
+                0.24745833347262192,
+                0.9999216352920364
+              ],
+              "northern_bound": 90.0
+            }
+          }
+        },
+        "published_pair_full_file": {
+          "finite_pairs": 6082560,
+          "mask_differences": 0,
+          "exact_values_and_masks": true,
+          "max_abs_difference_kg_s": 0.0,
+          "exact_time_coordinates": true
+        },
+        "native_reconstruction": {
+          "msftm": {
+            "finite_pairs": 1120,
+            "mask_differences": 0,
+            "exact_values_and_masks": true,
+            "max_abs_difference_kg_s": 0.0
+          },
+          "msfty": {
+            "finite_pairs": 1120,
+            "mask_differences": 0,
+            "exact_values_and_masks": true,
+            "max_abs_difference_kg_s": 0.0
+          }
+        },
+        "geometry": {
+          "atlantic_arctic_ocean": [
+            {
+              "j": 200,
+              "nominal_latitude": 33.987858440242505,
+              "wet_faces": 71,
+              "min_face_midpoint_latitude": 33.987858440242505,
+              "max_face_midpoint_latitude": 33.987858440242505,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 240,
+              "nominal_latitude": 63.15452510690917,
+              "wet_faces": 64,
+              "min_face_midpoint_latitude": 63.15452510690917,
+              "max_face_midpoint_latitude": 63.15452510690917,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 250,
+              "nominal_latitude": 67.74956072461234,
+              "wet_faces": 70,
+              "min_face_midpoint_latitude": 66.66679108914755,
+              "max_face_midpoint_latitude": 67.74946074181145,
+              "wet_faces_more_than_one_degree_away": 3
+            },
+            {
+              "j": 270,
+              "nominal_latitude": 76.88426210106635,
+              "wet_faces": 194,
+              "min_face_midpoint_latitude": 69.9060275613836,
+              "max_face_midpoint_latitude": 76.88383510254589,
+              "wet_faces_more_than_one_degree_away": 116
+            },
+            {
+              "j": 285,
+              "nominal_latitude": 83.68392638183889,
+              "wet_faces": 208,
+              "min_face_midpoint_latitude": 72.27425967519278,
+              "max_face_midpoint_latitude": 83.68296140834309,
+              "wet_faces_more_than_one_degree_away": 149
+            },
+            {
+              "j": 299,
+              "nominal_latitude": 90.0,
+              "wet_faces": 262,
+              "min_face_midpoint_latitude": 72.51339508581536,
+              "max_face_midpoint_latitude": 89.8891519997889,
+              "wet_faces_more_than_one_degree_away": 242
+            }
+          ],
+          "indian_pacific_ocean": [
+            {
+              "j": 200,
+              "nominal_latitude": 33.987858440242505,
+              "wet_faces": 117,
+              "min_face_midpoint_latitude": 33.987858440242505,
+              "max_face_midpoint_latitude": 33.987858440242505,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 240,
+              "nominal_latitude": 63.15452510690917,
+              "wet_faces": 16,
+              "min_face_midpoint_latitude": 63.15452510690917,
+              "max_face_midpoint_latitude": 63.15452510690917,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 250,
+              "nominal_latitude": 67.74956072461234,
+              "wet_faces": 0,
+              "min_face_midpoint_latitude": null,
+              "max_face_midpoint_latitude": null,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 270,
+              "nominal_latitude": 76.88426210106635,
+              "wet_faces": 0,
+              "min_face_midpoint_latitude": null,
+              "max_face_midpoint_latitude": null,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 285,
+              "nominal_latitude": 83.68392638183889,
+              "wet_faces": 0,
+              "min_face_midpoint_latitude": null,
+              "max_face_midpoint_latitude": null,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 299,
+              "nominal_latitude": 90.0,
+              "wet_faces": 0,
+              "min_face_midpoint_latitude": null,
+              "max_face_midpoint_latitude": null,
+              "wet_faces_more_than_one_degree_away": 0
+            }
+          ],
+          "global_ocean": [
+            {
+              "j": 200,
+              "nominal_latitude": 33.987858440242505,
+              "wet_faces": 360,
+              "min_face_midpoint_latitude": 33.987858440242505,
+              "max_face_midpoint_latitude": 33.987858440242505,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 240,
+              "nominal_latitude": 63.15452510690917,
+              "wet_faces": 360,
+              "min_face_midpoint_latitude": 63.15452510690917,
+              "max_face_midpoint_latitude": 63.15452510690917,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 250,
+              "nominal_latitude": 67.74956072461234,
+              "wet_faces": 360,
+              "min_face_midpoint_latitude": 65.0251986430797,
+              "max_face_midpoint_latitude": 67.74946074181145,
+              "wet_faces_more_than_one_degree_away": 156
+            },
+            {
+              "j": 270,
+              "nominal_latitude": 76.88426210106635,
+              "wet_faces": 360,
+              "min_face_midpoint_latitude": 65.12147471339414,
+              "max_face_midpoint_latitude": 76.88383510254589,
+              "wet_faces_more_than_one_degree_away": 264
+            },
+            {
+              "j": 285,
+              "nominal_latitude": 83.68392638183889,
+              "wet_faces": 360,
+              "min_face_midpoint_latitude": 65.18601011092623,
+              "max_face_midpoint_latitude": 83.68296140834309,
+              "wet_faces_more_than_one_degree_away": 292
+            },
+            {
+              "j": 299,
+              "nominal_latitude": 90.0,
+              "wet_faces": 360,
+              "min_face_midpoint_latitude": 65.21047789126322,
+              "max_face_midpoint_latitude": 89.8891519997889,
+              "wet_faces_more_than_one_degree_away": 340
+            }
+          ]
+        }
+      }
+    },
+    "piControl": {
+      "grid_checks": {
+        "basin_mask_t_y_max_difference_degrees": 3.7984813729963207e-06,
+        "basin_mask_t_x_max_difference_degrees": 0.0,
+        "supergrid_t_y_max_difference_degrees": 3.8136018787326975e-06,
+        "supergrid_corner_y_max_difference_degrees": 3.8138563667189374e-06
+      },
+      "native_psiv": {
+        "dimensions": [
+          "time",
+          "yu_ocean",
+          "xt_ocean"
+        ],
+        "shape": [
+          12,
+          300,
+          360
+        ],
+        "long_name": "quasi-barotropic strmfcn psiv (compatible with ty_trans)",
+        "units": "kg/s"
+      },
+      "rho": {
+        "native": {
+          "ty_trans_rho": {
+            "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/ocean/ocean-3d-ty_trans_rho-1mon-mean-y_0101.nc",
+            "dimensions": [
+              "time",
+              "potrho",
+              "grid_yu_ocean",
+              "grid_xt_ocean"
+            ],
+            "shape": [
+              12,
+              80,
+              300,
+              360
+            ],
+            "long_name": "T-cell j-mass transport on pot_rho",
+            "units": "kg/s"
+          },
+          "ty_trans_rho_gm": {
+            "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/ocean/ocean-3d-ty_trans_rho_gm-1mon-mean-y_0101.nc",
+            "dimensions": [
+              "time",
+              "potrho",
+              "grid_yu_ocean",
+              "grid_xt_ocean"
+            ],
+            "shape": [
+              12,
+              80,
+              300,
+              360
+            ],
+            "long_name": "T-cell j-mass transport from GM on pot_rho",
+            "units": "kg/s"
+          }
+        },
+        "available_native_i_transport_files": {
+          "tx_trans_rho": [
+            "ocean-3d-tx_trans_rho-1yr-mean-y_0101.nc"
+          ],
+          "tx_trans_rho_gm": [
+            "ocean-3d-tx_trans_rho_gm-1yr-mean-y_0101.nc"
+          ]
+        },
+        "published": {
+          "msftm": {
+            "path": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/msftm/tavg-rho-hyb-sea/g116/v20261117/msftm_tavg-rho-hyb-sea_mon_glb_g116_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010912.nc",
+            "grid_label": "g116",
+            "horizontal_label": "hyb",
+            "nominal_resolution": "100 km",
+            "native_sample_time": 36539.5,
+            "time_units": "days since 0001-01-01 00:00:00",
+            "calendar": "proleptic_gregorian",
+            "variable": {
+              "dimensions": [
+                "time",
+                "basin",
+                "rho",
+                "lat"
+              ],
+              "shape": [
+                108,
+                3,
+                80,
+                300
+              ],
+              "standard_name": "ocean_meridional_overturning_mass_streamfunction",
+              "units": "kg s-1",
+              "cell_methods": "depth: longitude: sum where sea (along a zig-zag grid path spanning a basin)  time: mean"
+            },
+            "latitude": {
+              "dimensions": [
+                "lat"
+              ],
+              "shape": [
+                300
+              ],
+              "standard_name": "latitude",
+              "units": "degrees_north",
+              "bounds": "lat_bnds",
+              "matches_native_coordinate": true,
+              "range": [
+                -77.7531683885388,
+                90.0
+              ],
+              "spacing_range": [
+                0.24745833347262192,
+                0.9999216352920364
+              ],
+              "northern_bound": 90.0
+            }
+          },
+          "msfty": {
+            "path": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/msfty/tavg-rho-ht-sea/g116/v20261117/msfty_tavg-rho-ht-sea_mon_glb_g116_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010912.nc",
+            "grid_label": "g116",
+            "horizontal_label": "ht",
+            "nominal_resolution": "100 km",
+            "native_sample_time": 36539.5,
+            "time_units": "days since 0001-01-01 00:00:00",
+            "calendar": "proleptic_gregorian",
+            "variable": {
+              "dimensions": [
+                "time",
+                "basin",
+                "rho",
+                "rlat"
+              ],
+              "shape": [
+                108,
+                3,
+                80,
+                300
+              ],
+              "standard_name": "ocean_y_overturning_mass_streamfunction",
+              "units": "kg s-1",
+              "cell_methods": "grid_longitude: sum where sea time: mean"
+            },
+            "latitude": {
+              "dimensions": [
+                "rlat"
+              ],
+              "shape": [
+                300
+              ],
+              "standard_name": "grid_latitude",
+              "units": "degrees",
+              "bounds": "rlat_bnds",
+              "matches_native_coordinate": true,
+              "range": [
+                -77.7531683885388,
+                90.0
+              ],
+              "spacing_range": [
+                0.24745833347262192,
+                0.9999216352920364
+              ],
+              "northern_bound": 90.0
+            }
+          }
+        },
+        "published_pair_full_file": {
+          "finite_pairs": 6082560,
+          "mask_differences": 0,
+          "exact_values_and_masks": true,
+          "max_abs_difference_kg_s": 0.0,
+          "exact_time_coordinates": true
+        },
+        "native_reconstruction": {
+          "msftm": {
+            "finite_pairs": 1120,
+            "mask_differences": 0,
+            "exact_values_and_masks": true,
+            "max_abs_difference_kg_s": 0.0
+          },
+          "msfty": {
+            "finite_pairs": 1120,
+            "mask_differences": 0,
+            "exact_values_and_masks": true,
+            "max_abs_difference_kg_s": 0.0
+          }
+        },
+        "geometry": {
+          "atlantic_arctic_ocean": [
+            {
+              "j": 200,
+              "nominal_latitude": 33.987858440242505,
+              "wet_faces": 71,
+              "min_face_midpoint_latitude": 33.987858440242505,
+              "max_face_midpoint_latitude": 33.987858440242505,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 240,
+              "nominal_latitude": 63.15452510690917,
+              "wet_faces": 64,
+              "min_face_midpoint_latitude": 63.15452510690917,
+              "max_face_midpoint_latitude": 63.15452510690917,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 250,
+              "nominal_latitude": 67.74956072461234,
+              "wet_faces": 70,
+              "min_face_midpoint_latitude": 66.66679108914755,
+              "max_face_midpoint_latitude": 67.74946074181145,
+              "wet_faces_more_than_one_degree_away": 3
+            },
+            {
+              "j": 270,
+              "nominal_latitude": 76.88426210106635,
+              "wet_faces": 194,
+              "min_face_midpoint_latitude": 69.9060275613836,
+              "max_face_midpoint_latitude": 76.88383510254589,
+              "wet_faces_more_than_one_degree_away": 116
+            },
+            {
+              "j": 285,
+              "nominal_latitude": 83.68392638183889,
+              "wet_faces": 208,
+              "min_face_midpoint_latitude": 72.27425967519278,
+              "max_face_midpoint_latitude": 83.68296140834309,
+              "wet_faces_more_than_one_degree_away": 149
+            },
+            {
+              "j": 299,
+              "nominal_latitude": 90.0,
+              "wet_faces": 262,
+              "min_face_midpoint_latitude": 72.51339508581536,
+              "max_face_midpoint_latitude": 89.8891519997889,
+              "wet_faces_more_than_one_degree_away": 242
+            }
+          ],
+          "indian_pacific_ocean": [
+            {
+              "j": 200,
+              "nominal_latitude": 33.987858440242505,
+              "wet_faces": 117,
+              "min_face_midpoint_latitude": 33.987858440242505,
+              "max_face_midpoint_latitude": 33.987858440242505,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 240,
+              "nominal_latitude": 63.15452510690917,
+              "wet_faces": 16,
+              "min_face_midpoint_latitude": 63.15452510690917,
+              "max_face_midpoint_latitude": 63.15452510690917,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 250,
+              "nominal_latitude": 67.74956072461234,
+              "wet_faces": 0,
+              "min_face_midpoint_latitude": null,
+              "max_face_midpoint_latitude": null,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 270,
+              "nominal_latitude": 76.88426210106635,
+              "wet_faces": 0,
+              "min_face_midpoint_latitude": null,
+              "max_face_midpoint_latitude": null,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 285,
+              "nominal_latitude": 83.68392638183889,
+              "wet_faces": 0,
+              "min_face_midpoint_latitude": null,
+              "max_face_midpoint_latitude": null,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 299,
+              "nominal_latitude": 90.0,
+              "wet_faces": 0,
+              "min_face_midpoint_latitude": null,
+              "max_face_midpoint_latitude": null,
+              "wet_faces_more_than_one_degree_away": 0
+            }
+          ],
+          "global_ocean": [
+            {
+              "j": 200,
+              "nominal_latitude": 33.987858440242505,
+              "wet_faces": 360,
+              "min_face_midpoint_latitude": 33.987858440242505,
+              "max_face_midpoint_latitude": 33.987858440242505,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 240,
+              "nominal_latitude": 63.15452510690917,
+              "wet_faces": 360,
+              "min_face_midpoint_latitude": 63.15452510690917,
+              "max_face_midpoint_latitude": 63.15452510690917,
+              "wet_faces_more_than_one_degree_away": 0
+            },
+            {
+              "j": 250,
+              "nominal_latitude": 67.74956072461234,
+              "wet_faces": 360,
+              "min_face_midpoint_latitude": 65.0251986430797,
+              "max_face_midpoint_latitude": 67.74946074181145,
+              "wet_faces_more_than_one_degree_away": 156
+            },
+            {
+              "j": 270,
+              "nominal_latitude": 76.88426210106635,
+              "wet_faces": 360,
+              "min_face_midpoint_latitude": 65.12147471339414,
+              "max_face_midpoint_latitude": 76.88383510254589,
+              "wet_faces_more_than_one_degree_away": 264
+            },
+            {
+              "j": 285,
+              "nominal_latitude": 83.68392638183889,
+              "wet_faces": 360,
+              "min_face_midpoint_latitude": 65.18601011092623,
+              "max_face_midpoint_latitude": 83.68296140834309,
+              "wet_faces_more_than_one_degree_away": 292
+            },
+            {
+              "j": 299,
+              "nominal_latitude": 90.0,
+              "wet_faces": 360,
+              "min_face_midpoint_latitude": 65.21047789126322,
+              "max_face_midpoint_latitude": 89.8891519997889,
+              "wet_faces_more_than_one_degree_away": 340
+            }
+          ]
+        }
+      }
+    }
+  }
+}
