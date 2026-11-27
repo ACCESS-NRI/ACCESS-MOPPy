@@ -1,13 +1,12 @@
 """Check selected ACCESS-ESM1-6 overturning fields on Gadi."""
 
 import argparse
-from hashlib import file_digest
 import json
+from hashlib import file_digest
 from pathlib import Path
 
 import numpy as np
 from netCDF4 import Dataset, chartostring
-
 
 NATIVE = Path("/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production")
 PUBLISHED = Path("/g/data/im55/publications/MIP-DRS7/CMIP7")
@@ -62,18 +61,24 @@ def comparison(expected, actual):
     return {
         "finite_pairs": int(valid.sum()),
         "mask_differences": int((np.isfinite(expected) != np.isfinite(actual)).sum()),
-        "exact_values_and_masks": bool(np.array_equal(expected, actual, equal_nan=True)),
+        "exact_values_and_masks": bool(
+            np.array_equal(expected, actual, equal_nan=True)
+        ),
         "max_abs_difference_kg_s": float(abs_difference.max()) if valid.any() else None,
     }
 
 
 def sum_available(array, axis):
-    return np.where(np.isfinite(array).any(axis=axis), np.nansum(array, axis=axis), np.nan)
+    return np.where(
+        np.isfinite(array).any(axis=axis), np.nansum(array, axis=axis), np.nan
+    )
 
 
 def reconstruct(components, flags, codes):
     if codes:
-        components = [np.where(np.isin(flags, codes), field, np.nan) for field in components]
+        components = [
+            np.where(np.isin(flags, codes), field, np.nan) for field in components
+        ]
     resolved, *parameterized = [sum_available(field, axis=-1) for field in components]
     cumulative = np.where(np.isfinite(resolved), np.nancumsum(resolved, axis=0), np.nan)
     for field in parameterized:
@@ -90,18 +95,26 @@ def geometry(face_latitude, nominal_latitude, wet, flags):
                 "j": row,
                 "nominal_latitude": float(nominal),
                 "wet_faces": int(inside.sum()),
-                "min_face_midpoint_latitude": float(lat[inside].min()) if inside.any() else None,
-                "max_face_midpoint_latitude": float(lat[inside].max()) if inside.any() else None,
+                "min_face_midpoint_latitude": float(lat[inside].min())
+                if inside.any()
+                else None,
+                "max_face_midpoint_latitude": float(lat[inside].max())
+                if inside.any()
+                else None,
                 "wet_faces_more_than_one_degree_away": int(
                     (inside & (np.abs(lat - nominal) > 1)).sum()
                 ),
             }
-            for row, nominal, lat, inside in zip(ROWS, nominal_latitude, face_latitude, selected)
+            for row, nominal, lat, inside in zip(
+                ROWS, nominal_latitude, face_latitude, selected
+            )
         ]
     return result
 
 
-def check_pair(native_dir, published_dir, year, version, vertical, flags, face_latitude):
+def check_pair(
+    native_dir, published_dir, year, version, vertical, flags, face_latitude
+):
     components = []
     native_metadata = {}
     native_time_axes = {}
@@ -117,7 +130,9 @@ def check_pair(native_dir, published_dir, year, version, vertical, flags, face_l
             time, _, lat, _ = variable.dimensions
             model_latitude = data(ds[lat])
             native_time_axes[name] = (
-                float(data(ds[time], 0)), ds[time].units, ds[time].calendar
+                float(data(ds[time], 0)),
+                ds[time].units,
+                ds[time].calendar,
             )
             native_metadata[name] = {
                 "path": str(path),
@@ -151,7 +166,9 @@ def check_pair(native_dir, published_dir, year, version, vertical, flags, face_l
                 "native_sample_time": float(data(time, 0)),
                 "time_units": time.units,
                 "calendar": time.calendar,
-                "variable": describe(variable, "standard_name", "units", "cell_methods"),
+                "variable": describe(
+                    variable, "standard_name", "units", "cell_methods"
+                ),
                 "latitude": {
                     **describe(latitude, "standard_name", "units", "bounds"),
                     "matches_native_coordinate": bool(
@@ -179,7 +196,9 @@ def check_pair(native_dir, published_dir, year, version, vertical, flags, face_l
         "published_pair_full_file": {
             **comparison(published_arrays["msftm"], published_arrays["msfty"]),
             "exact_time_coordinates": bool(
-                np.array_equal(published_time_axes["msftm"], published_time_axes["msfty"])
+                np.array_equal(
+                    published_time_axes["msftm"], published_time_axes["msfty"]
+                )
             ),
         },
         "native_reconstruction": {
@@ -187,7 +206,10 @@ def check_pair(native_dir, published_dir, year, version, vertical, flags, face_l
             for name, field in published_arrays.items()
         },
         "geometry": geometry(
-            face_latitude, model_latitude[ROWS], np.isfinite(components[0]).any(axis=0), flags
+            face_latitude,
+            model_latitude[ROWS],
+            np.isfinite(components[0]).any(axis=0),
+            flags,
         ),
     }
 
@@ -222,15 +244,27 @@ def main():
     }
     for activity, experiment, run, year, version, verticals in (
         ("C4MIP", "1pctCO2-bgc", "1pctCO2-bgc-01", "0201", "v20261119", ("ol", "rho")),
-        ("CMIP", "piControl", "Ndep2-PI-CNP-concentrations", "0101", "v20261117", ("rho",)),
+        (
+            "CMIP",
+            "piControl",
+            "Ndep2-PI-CNP-concentrations",
+            "0101",
+            "v20261117",
+            ("rho",),
+        ),
     ):
         native_dir = NATIVE / run / "output000/ocean"
         published_dir = (
-            PUBLISHED / activity / "ACCESS-Consortium/ACCESS-ESM1-6"
-            / experiment / "r1i1p1f1/glb/mon"
+            PUBLISHED
+            / activity
+            / "ACCESS-Consortium/ACCESS-ESM1-6"
+            / experiment
+            / "r1i1p1f1/glb/mon"
         )
         with Dataset(native_dir / "ocean-2d-geolat_t-fx.nc") as ds:
-            longitude_difference = (mask_longitude - data(ds["xt_ocean"]) + 180) % 360 - 180
+            longitude_difference = (
+                mask_longitude - data(ds["xt_ocean"]) + 180
+            ) % 360 - 180
             tracer_latitude = data(ds["geolat_t"])
             grid_checks = {
                 "basin_mask_t_y_max_difference_degrees": float(
@@ -253,7 +287,13 @@ def main():
         case = {"grid_checks": grid_checks, "native_psiv": psiv}
         for vertical in verticals:
             case[vertical] = check_pair(
-                native_dir, published_dir, year, version, vertical, flags[ROWS], face_latitude
+                native_dir,
+                published_dir,
+                year,
+                version,
+                vertical,
+                flags[ROWS],
+                face_latitude,
             )
         result["cases"][experiment] = case
 
