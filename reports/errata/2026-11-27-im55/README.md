@@ -28,4 +28,4 @@ Each directory contains a casual explanation and example, development/publicatio
 | P02 | Unassigned pending model replay and broader incidence | 14 | 643 | [Explanation](P02/README.md) |
 | P03 | Potentially High for transport geometry; no parent-grid-label erratum | 28 | 994 | [Explanation](P03/README.md) |
 
-Code fixes do not replace old publications. Topsoil, snow and `mrso` corrections already shipped; `tsl` is fixed on main but postdates the checked 1.9.1 release. New source/resource changes and validation-only reports are linked per finding. Published replacements, live ESGF identifier reconciliation and erratum submission remain publication-team work.
+Code fixes do not replace old publications. The topsoil and snow corrections shipped in MOPPy 1.9.0. Both `mrso` (PR #854) and `tsl` (PR #851) are fixed on main but postdate the checked latest release, 1.9.1; replacement production needs a build containing those fixes. New source/resource changes and validation-only reports are linked per finding. Published replacements, live ESGF identifier reconciliation and erratum submission remain publication-team work.
