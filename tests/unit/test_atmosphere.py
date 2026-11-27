@@ -25,7 +25,9 @@ import xarray as xr
 from access_moppy.atmosphere import Atmosphere_CMORiser
 from access_moppy.base import CMORiser
 from access_moppy.derivations.calc_atmos import PLEV19_PA
+from access_moppy.derivations.calc_land import calc_tsl
 from access_moppy.utilities import load_model_mappings
+from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -1701,199 +1703,114 @@ class TestSelectAndProcessVariablesTimeResolutionChange:
 
 
 class TestSoilDepthDimension:
-    """
-    Ensure that tsl (soil temperature) gets its soil_model_level_number
-    dimension replaced with actual depth values in metres via calc_tsl,
-    so that the CMIP6 sdepth unit check (m) and the transpose both succeed.
-
-    Regression test for two cascading errors when running Lmon.tsl:
-      1. ValueError: Dimensions {'depth'} do not exist. Expected one or more of
-         ('time', 'soil_model_level_number', 'lat', 'lon')
-      2. ValueError: Mismatch units for depth: 1 != m
-    """
+    """Check CABLE soil depths from the temperature formula to NetCDF."""
 
     @pytest.mark.unit
-    def test_calc_tsl_replaces_level_with_depth_metres(self, tmp_path):
-        """
-        calc_tsl must swap soil_model_level_number for a 'depth' coordinate
-        whose values are the CABLE layer mid-point depths in metres.
+    @pytest.mark.parametrize(
+        "levels,expected_depths",
+        [
+            ([1, 2, 3, 4, 5, 6], [0.011, 0.051, 0.157, 0.4385, 1.1855, 3.164]),
+            ([1, 3, 6], [0.011, 0.157, 3.164]),
+            (None, [0.011, 0.051, 0.157, 0.4385, 1.1855, 3.164]),
+        ],
+        ids=["full", "selected", "unlabelled"],
+    )
+    def test_calc_tsl_replaces_level_with_depth_metres(self, levels, expected_depths):
+        dim = "soil_model_level_number"
+        values = np.arange(len(expected_depths), dtype=np.float32) + 280
+        values[1] = np.nan
+        temperature = xr.DataArray(
+            values,
+            dims=dim,
+            coords={dim: levels} if levels is not None else None,
+            name="fld_s08i225",
+            attrs={"units": "K", "description": "soil temperature"},
+        ).chunk(2)
 
-        This is the unit test for the calc_tsl function itself.
-        """
-        from access_moppy.derivations.calc_land import calc_tsl
+        result = calc_tsl(var1=temperature)
 
-        try:
-            import xarray as xr
-        except ImportError:
-            pytest.skip("xarray not available")
-
-        nz = 6
-        # Build a minimal DataArray with soil_model_level_number as a dim
-        da = xr.DataArray(
-            [[float(i)] for i in range(1, nz + 1)],
-            dims=["soil_model_level_number", "x"],
-            coords={"soil_model_level_number": list(range(1, nz + 1))},
-        )
-
-        result = calc_tsl(da)
-
-        assert "depth" in result.dims, "calc_tsl must produce a 'depth' dimension"
-        assert (
-            "soil_model_level_number" not in result.dims
-        ), "soil_model_level_number must be dropped"
-        expected_depths = [
-            0.0109999999403954,
-            0.0509999990463257,
-            0.157000005245209,
-            0.438499987125397,
-            1.18550002574921,
-            2.87199997901917,
-        ]
-        import math
-
-        for got, exp in zip(result["depth"].values, expected_depths):
-            assert math.isclose(
-                got, exp, rel_tol=1e-6
-            ), f"depth value {got} does not match expected {exp}"
+        assert result.dims == ("depth",)
+        assert dim not in result.coords
+        assert result.depth.attrs["units"] == "m"
+        assert result.chunks == temperature.chunks
+        assert result.name == temperature.name
+        assert result.dtype == temperature.dtype
+        assert result.attrs == temperature.attrs
+        np.testing.assert_allclose(result.depth, expected_depths)
+        np.testing.assert_array_equal(result, values)
 
     @pytest.mark.unit
-    def test_tsl_select_and_process_produces_depth_dim(self, tmp_path):
-        """
-        select_and_process_variables for tsl must produce a 'depth' dimension
-        (not soil_model_level_number) when the formula path calls calc_tsl.
+    @pytest.mark.parametrize("levels", [[0, 1], [1, 7], [3, 3], [3, 1], [1.5, 3]])
+    def test_calc_tsl_rejects_invalid_layer_labels(self, levels):
+        dim = "soil_model_level_number"
+        temperature = xr.DataArray([280.0, 281.0], dims=dim, coords={dim: levels})
 
-        This reproduces both crashes:
-          - ValueError: Dimensions {'depth'} do not exist
-          - ValueError: Mismatch units for depth: 1 != m
-        """
-        import tempfile
+        with pytest.raises(ValueError, match="CABLE soil levels"):
+            calc_tsl(temperature)
 
-        nt, nz, nlat, nlon = 3, 6, 5, 5
-        data = np.ones((nt, nz, nlat, nlon), dtype=np.float32) * 280.0
-
+    @pytest.mark.unit
+    @pytest.mark.parametrize("levels", [[1, 2, 3, 4, 5, 6], [1, 3, 6]])
+    def test_tsl_and_mrsol_write_the_same_physical_depth_bounds(self, tmp_path, levels):
+        dims = ("time", "soil_model_level_number", "lat", "lon")
+        shape = (2, len(levels), 2, 2)
+        temperature = np.arange(np.prod(shape), dtype=np.float32).reshape(shape) + 260
+        temperature[0, -1, 0, 0] = np.nan
         ds = xr.Dataset(
             {
-                "fld_s08i225": (
-                    ["time", "soil_model_level_number", "lat", "lon"],
-                    data,
-                    {"units": "K"},
-                )
+                "fld_s08i225": (dims, temperature, {"units": "K"}),
+                "fld_s08i223": (dims, np.full(shape, 10.0), {"units": "kg m-2"}),
             },
             coords={
-                "time": np.arange(nt, dtype=float),
-                "soil_model_level_number": np.arange(1, nz + 1, dtype=float),
-                "lat": np.linspace(-90, 90, nlat),
-                "lon": np.linspace(0, 360, nlon),
+                "time": ("time", [15.5, 45.0], {"units": "days since 1850-01-01"}),
+                "soil_model_level_number": np.asarray(levels, dtype=float),
+                "lat": [-45.0, 45.0],
+                "lon": [0.0, 180.0],
             },
-        )
+        ).chunk({"time": 1})
 
-        vocab = MagicMock()
-        vocab.variable = {
-            "dimensions": "longitude latitude sdepth time",
-            "units": "K",
-            "type": "double",
-        }
-        vocab.axes = {
-            "longitude": {"out_name": "lon"},
-            "latitude": {"out_name": "lat"},
-            "sdepth": {"out_name": "depth"},
-            "time": {"out_name": "time"},
-        }
-        # Formula path: calc_tsl already produces 'depth', rename map is a no-op
-        vocab._get_axes.return_value = (
-            {"sdepth": {"out_name": "depth"}},
-            {"depth": "depth"},
-        )
-        vocab._get_required_bounds_variables.return_value = ({}, {})
+        for compound_name in ("Lmon.tsl", "Emon.mrsol"):
+            # Use the bundled CMOR tables and keep publication metadata out of
+            # the fixture so the processing and writer paths run locally.
+            vocab = object.__new__(CMIP6Vocabulary)
+            vocab.table, vocab.cmor_name = compound_name.split(".")
+            vocab.variable = vocab._get_variable_entry()
+            cmoriser = Atmosphere_CMORiser(
+                input_data=ds,
+                output_path=str(tmp_path),
+                vocab=vocab,
+                variable_mapping=load_model_mappings(compound_name, "ACCESS-ESM1-6"),
+                compound_name=compound_name,
+                enable_chunking=False,
+                enable_compression=False,
+                split_years=None,
+            )
+            with (
+                patch.object(vocab, "get_required_global_attributes", return_value={}),
+                patch.object(vocab, "get_required_attribute_names", return_value=[]),
+                patch.object(
+                    vocab, "generate_filename", return_value=f"{vocab.cmor_name}.nc"
+                ),
+            ):
+                cmoriser.run(write_output=True)
 
-        mapping = {
-            "tsl": {
-                "model_variables": ["fld_s08i225"],
-                "calculation": {
-                    "type": "formula",
-                    "operation": "calc_tsl",
-                    "args": ["fld_s08i225"],
-                },
-                "dimensions": {
-                    "time": "time",
-                    "depth": "depth",
-                    "lat": "lat",
-                    "lon": "lon",
-                },
-            }
-        }
-
-        cmoriser = Atmosphere_CMORiser(
-            input_data=ds,
-            output_path=str(tmp_path or tempfile.mkdtemp()),
-            vocab=vocab,
-            variable_mapping=mapping,
-            compound_name="Lmon.tsl",
-            validate_frequency=False,
-            enable_chunking=False,
-            enable_compression=False,
-        )
-
-        with patch.object(cmoriser, "load_dataset"):
-            cmoriser.ds = ds.copy()
-            # Must not raise ValueError about missing 'depth' dim or units mismatch
-            cmoriser.select_and_process_variables()
-
-        assert (
-            "depth" in cmoriser.ds["tsl"].dims
-        ), "tsl must have 'depth' as a dimension after processing"
-        assert (
-            "soil_model_level_number" not in cmoriser.ds["tsl"].dims
-        ), "soil_model_level_number must have been replaced by depth"
-        # depth coordinate values must be in metres (not integer level indices)
-        depth_vals = cmoriser.ds["tsl"]["depth"].values
-        assert all(
-            v < 10.0 for v in depth_vals
-        ), "depth values must be in metres (< 10 m), not level indices"
-
-    @pytest.mark.unit
-    def test_calc_tsl_no_explicit_coord_uses_sequential_levels(self):
-        """
-        When soil_model_level_number is a dimension but has no explicit
-        coordinate array, calc_tsl must fall back to sequential indices
-        (1, 2, 3, ...) to look up the depth values.
-
-        Covers the else-branch:
-            level_size = result.sizes["soil_model_level_number"]
-            level_values = list(range(1, level_size + 1))
-        """
-        from access_moppy.derivations.calc_land import calc_tsl
-
-        try:
-            import xarray as xr
-        except ImportError:
-            pytest.skip("xarray not available")
-
-        nz = 6
-        # No coords= argument → soil_model_level_number is a bare dimension
-        da = xr.DataArray(
-            [[float(i)] for i in range(nz)],
-            dims=["soil_model_level_number", "x"],
-        )
-
-        result = calc_tsl(da)
-
-        assert "depth" in result.dims
-        assert "soil_model_level_number" not in result.dims
-        import math
-
-        expected_depths = [
-            0.0109999999403954,
-            0.0509999990463257,
-            0.157000005245209,
-            0.438499987125397,
-            1.18550002574921,
-            2.87199997901917,
-        ]
-        for got, exp in zip(result["depth"].values, expected_depths):
-            assert math.isclose(
-                got, exp, rel_tol=1e-6
-            ), f"depth value {got} does not match expected {exp}"
+        with (
+            xr.open_dataset(tmp_path / "tsl.nc") as tsl,
+            xr.open_dataset(tmp_path / "mrsol.nc") as mrsol,
+        ):
+            assert tsl.tsl.dims == ("time", "depth", "lat", "lon")
+            assert "soil_model_level_number" not in tsl.dims
+            assert tsl.tsl.attrs["units"] == "K"
+            assert tsl.depth.attrs["units"] == "m"
+            assert tsl.depth.attrs["bounds"] == "depth_bnds"
+            assert tsl.depth_bnds.dims == ("depth", "bnds")
+            xr.testing.assert_identical(tsl.depth, mrsol.depth)
+            xr.testing.assert_identical(tsl.depth_bnds, mrsol.depth_bnds)
+            edges = np.array([0.0, 0.022, 0.080, 0.234, 0.643, 1.728, 4.600])
+            indices = np.array(levels)
+            expected_bounds = np.column_stack((edges[indices - 1], edges[indices]))
+            np.testing.assert_allclose(tsl.depth_bnds, expected_bounds)
+            np.testing.assert_allclose(tsl.depth, expected_bounds.mean(axis=1))
+            np.testing.assert_array_equal(tsl.tsl, temperature)
 
 
 # ---------------------------------------------------------------------------

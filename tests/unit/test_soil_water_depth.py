@@ -13,6 +13,7 @@ from access_moppy.derivations.calc_land import (
     calc_mrsll,
     calc_mrsol,
     calc_topsoil,
+    calc_tsl,
 )
 
 
@@ -127,16 +128,18 @@ def test_layered_output_attaches_bounds_for_selected_model_layers():
     assert result.depth.attrs["bounds"] == "depth_bnds"
 
 
-def test_existing_physical_depth_and_mask_are_preserved():
-    water = xr.DataArray([2.0, np.nan], dims="depth", coords={"depth": [0.011, 0.051]})
-    water.depth.attrs["units"] = "m"
-    xr.testing.assert_identical(calc_mrsol(water), water)
+@pytest.mark.parametrize("operation", [calc_mrsol, calc_tsl])
+def test_existing_physical_depth_and_mask_are_preserved(operation):
+    field = xr.DataArray([2.0, np.nan], dims="depth", coords={"depth": [0.011, 0.051]})
+    field.depth.attrs["units"] = "m"
+    xr.testing.assert_identical(operation(field), field)
 
 
-def test_unknown_physical_depth_is_rejected_instead_of_guessing_bounds():
+@pytest.mark.parametrize("operation", ["calc_mrsol", "calc_tsl"])
+def test_unknown_physical_depth_is_rejected_instead_of_guessing_bounds(operation):
     water = xr.DataArray([2.0], dims="depth", coords={"depth": [0.123]})
     with pytest.raises(ValueError, match="Unknown CABLE soil depth"):
-        coordinate_setup("calc_mrsol", water.to_dataset(name="water"), {"units": "m"})
+        coordinate_setup(operation, water.to_dataset(name="water"), {"units": "m"})
 
 
 def test_topsoil_coordinate_rejects_unreduced_layer_data():

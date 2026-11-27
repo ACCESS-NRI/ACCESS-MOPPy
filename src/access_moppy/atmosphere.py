@@ -413,7 +413,13 @@ class Atmosphere_CMORiser(CMORiser):
         from access_moppy.derivations.calc_land import cable_soil_geometry
 
         operation = self.mapping[self.cmor_name].get("calculation", {}).get("operation")
-        if operation not in {"calc_mrsfl", "calc_mrsll", "calc_mrsol", "calc_topsoil"}:
+        if operation not in {
+            "calc_mrsfl",
+            "calc_mrsll",
+            "calc_mrsol",
+            "calc_topsoil",
+            "calc_tsl",
+        }:
             return
         meta = next(
             (v for v in self.vocab.axes.values() if v.get("out_name") == "depth"),
