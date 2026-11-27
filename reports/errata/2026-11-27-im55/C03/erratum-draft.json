@@ -1,16 +1,16 @@
 {
   "audit_id": "C03",
   "title": "Erratum: older sea-ice snow thickness still blows up where almost no ice remains",
-  "status": "DRAFT \u2014 not submitted to ESGF",
+  "status": "DRAFT — not submitted to ESGF",
   "proposed_severity": "Critical",
   "model": "ACCESS-ESM1-6",
   "audit_date": "2026-11-27",
-  "description": "The old recipe divides snow mass by tiny positive ice concentrations. Near-zero numerical leftovers become huge snow thicknesses. It also uses snow density 317 instead of the model's 330 kg/m\u00b3 and turns missing concentration into zero snow.",
+  "description": "The old recipe divides snow mass by tiny positive ice concentrations. Near-zero numerical leftovers become huge snow thicknesses. It also uses snow density 317 instead of the model's 330 kg/m³ and turns missing concentration into zero snow.",
   "example": "A sampled historical field contains 12,519.95 m of snow on sea ice. This is a tiny-denominator artefact, not a kilometre-high snowpack, and it can dominate an average.",
-  "scientific_evidence": "The piControl January 0101 field reaches 203.27 m; its ten cells above 10 m have ice concentrations of only 3.27\u00d710\u207b\u2079\u20132.70\u00d710\u207b\u2077 percent. Missing ice over 38,218 land cells becomes unmasked zero snow. A historical r6 sample reaches 12,519.95 m. Separately, density 317 kg m\u207b\u00b3 was used instead of the CICE5 value 330, making ordinary positive thickness 4.10% high.",
+  "scientific_evidence": "The piControl January 0101 field reaches 203.27 m; its ten cells above 10 m have ice concentrations of only 3.27×10⁻⁹–2.70×10⁻⁷ percent. Missing ice over 38,218 land cells becomes unmasked zero snow. A historical r6 sample reaches 12,519.95 m. Separately, density 317 kg m⁻³ was used instead of the CICE5 value 330, making ordinary positive thickness 4.10% high.",
   "impact": "Extreme residual-ice values can dominate spatial statistics. The combined denominator/mask and density defects justify Critical; the density discrepancy alone would merit High.",
-  "recommended_action": "Use the fixes in #812/#813: model snow density 330 kg m\u207b\u00b3, the approved 0.01% concentration threshold, and propagation of missing inputs. Regenerate affected versions and validate masks as well as extrema. Multiplying by 317/330 alone is insufficient.",
-  "development_team_action": "MOPPy development: fixes #812/#813 already exist; verify their output and preserve masks. Publication team: replace the 48 remaining old releases tracked by #835. CICE density 330 is documented; do not open a model bug for it.",
+  "recommended_action": "Use the fixes in #812/#813: model snow density 330 kg m⁻³, the approved 0.01% concentration threshold, and propagation of missing inputs. Regenerate affected versions and validate masks as well as extrema. Multiplying by 317/330 alone is insufficient.",
+  "development_team_action": "The threshold/mask and CICE5 snow-density corrections are already merged in PRs #812/#813 and released in MOPPy 1.9.0. Publication team: regenerate the 48 old releases. Native CICE density 330 kg/m3 is documented; no model-code repair is indicated.",
   "affected_dataset_versions": 48,
   "file_references": 1081,
   "file_list": "affected-files.txt",
@@ -31,5 +31,9 @@
   "activity_ids": [
     "C4MIP",
     "CMIP"
-  ]
+  ],
+  "validation": "Fresh January 0101 Gadi output lowers the old 203.274 m maximum to 3.644 m, removes all ten values above 10 m in that sample, restores 38,218 land masks and applies the 0.01% ice-presence threshold. All retained positive thicknesses have the expected 317/330 density adjustment; 29 focused tests passed.",
+  "implementation_or_validation_pr": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/pull/872",
+  "tested_candidate_commit": "b0abc3050288d419384006d7aff9c45f9137a278",
+  "dataset_versions_in_scope": 48
 }

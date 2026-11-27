@@ -1,40 +1,37 @@
-# Investigate whether overturning follows native rows or true latitude
+# Overturning uses native rows where geographic latitude paths need review
 
-## What is going on?
+A tripolar ocean grid row bends in the Arctic. The sampled msftm files contain the same native-row sums as msfty, although msftm is described as following approximate geographic latitudes. The numerical difference from an agreed latitude-following calculation is still unknown.
 
-On a tripolar ocean mesh, a grid row can bend away from a geographic parallel. Summing transports along that row and labelling it as a true-latitude overturning section may describe the wrong geometry. The current reduced output also keeps the source grid label.
+For example: The Atlantic–Arctic row labelled 76.884°N includes wet-face midpoints from 69.906°N to 76.884°N; 116 of 194 are more than one degree from that nominal latitude. A user interpreting it as a section near that parallel could assign the transport to the wrong path.
 
-For example: An Arctic row can wander across latitudes. A transport assigned to a single latitude may then not be the transport across that parallel, even if the sum itself was computed correctly.
+**Recommended seriousness:** Potentially High for transport geometry; no parent-grid-label erratum. **Status:** PROVISIONAL — do not submit as a confirmed erratum.
 
-## What the audit actually found
+## Evidence and scope
 
-The 28 msftm/msfty datasets retain g116 on reduced basin/latitude output. #827 identifies an unresolved distinction between summing native tripolar j rows and integrating geographic parallels. This audit confirms the reduced dimensions and labels; it does not independently resolve the Arctic transport geometry or validate basin masks.
+Three complete msftm/msfty file pairs have identical values, times and masks. Independent January reconstruction from archived MOM j-face transports matches both on six sampled rows. Supergrid face coordinates establish the Arctic departures. This checks six published files from two experiments, not all 28 candidate versions. Current CMIP7 guidance permits parent g116; g262 does not describe these nonuniform 300 native rows.
 
-**Proposed severity:** Potentially High for geometry; Medium for grid metadata. **Status:** PROVISIONAL — do not submit as a confirmed erratum.
+Investigation scope: 28 versions / 994 files. Detailed comparisons cover three msftm/msfty pairs (six files); the candidate list is not a verified withdrawal list.
 
-The 27 November 2026 im55 inventory identifies **28 current dataset versions and 994 file references** for this item. These are candidate files to investigate, not a confirmed withdrawal list.
+Inventory scope: **28 dataset versions / 994 file references**. [Exact list](candidate-files.txt) · [Dataset/version inventory](datasets.json) · [Machine-readable draft](erratum-draft.json). List SHA-256: `e462830d0edf64a79369aa8ab9cb74b95d43b35a9322b494ceb4ad68ba6e1a35`.
 
-Example immutable file:
-```
-/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-bgc/r1i1p1f1/glb/mon/msftm/tavg-ol-hyb-sea/g116/v20261119/msftm_tavg-ol-hyb-sea_mon_glb_g116_ACCESS-ESM1-6_1pctCO2-bgc_r1i1p1f1_020101-020912.nc
-```
+[Six comparison files](comparison-files.txt); msfty is included as a native-row comparator.
+
+[Current CMIP7 grid guidance](https://github.com/WCRP-CMIP/cmip7-guidance/blob/e116c32cdd5acbdd54d53f5c5412025936d9446a/docs/CMIP7/Grid_Labels_for_Derived_Products.md).
 
 ## Who needs to act?
 
-MOPPy and MOM/ocean diagnostic developers: establish the native integration paths, basin masks and intended msftm versus msfty meaning before relabelling or changing calculations. #827/#830 already document the scientific blocker. Avoid a cosmetic grid-label fix that claims an unverified topology.
+MOM/ocean and CMIP7 diagnostic teams: settle the scientific path/reference and cadence requirements. MOPPy: implement the approved derivation only after those decisions. Publication team: identify confirmed msftm versions after that comparison; the 28-version inventory also contains msfty and is investigation scope.
 
-## Proposed correction and acceptance check
+## Correction and acceptance
 
-Trace the native transport paths and compare msftm with msfty before choosing a replacement grid or changing coordinates. Do not relabel native rows as true latitude merely to make metadata pass.
+Agree target latitude paths, conservative i/j face selection/orientation, basin masks, components and reference transport before implementing a replacement. Check matching input cadence: sampled density i transports are annual, whereas j transports are monthly. Do not substitute g262 or relabel coordinates to imply an uncomputed geographic section.
 
-## Errata draft and exact file list
+## Gadi validation
 
-A formal draft and a complete newline-delimited list of the 994 candidate files have been prepared. See [`candidate-files.txt`](candidate-files.txt), [`datasets.json`](datasets.json), and [`erratum-draft.json`](erratum-draft.json). File-list SHA-256: `e462830d0edf64a79369aa8ab9cb74b95d43b35a9322b494ceb4ad68ba6e1a35`.
+All values in three complete published file pairs are identical. Independent native reconstruction is exact on six January rows for the depth and two density cases. The sample establishes path provenance, not error magnitude versus an approved alternative.
 
-The `Need Errata` label tracks the requested investigation; it does not declare this suspected problem confirmed. Do not retract or rescale on this issue alone.
+[Implementation or validation PR](https://github.com/ACCESS-NRI/ACCESS-MOPPy/pull/875) at `e9dc5baa9b94b922a4a06b5e684a8c4397459eab`.
 
-Related work: #827, #830.
+Tracking: [864](https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/864) · Audit ID **P03**.
 
-Audit tracking ID: **P03**. No published data have been modified.
-
-Tracking issue: [864](https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/864).
+No published data or ESGF records were changed. Replacement versions and ESGF erratum identifiers remain unset.

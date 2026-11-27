@@ -1,7 +1,7 @@
 {
   "audit_id": "H04",
   "title": "Missing soil water and transpiration become zero over the ocean",
-  "status": "DRAFT \u2014 not submitted to ESGF",
+  "status": "DRAFT — not submitted to ESGF",
   "proposed_severity": "High",
   "model": "ACCESS-ESM1-6",
   "audit_date": "2026-11-27",
@@ -10,7 +10,7 @@
   "scientific_evidence": "First files of all 312 affected datasets were numerically sampled and contain unmasked ocean zeros. For January 0101 piControl, native comparisons for all three variables agree on 10,865 valid land cells but lose the mask on 16,975 ocean cells. The mechanism is skip-missing summation of entirely missing soil columns or tiles.",
   "impact": "Statistics that infer their domain from the data mask include ocean zeros and can underestimate land means. This check does not establish incorrect values on valid land. Zero is also a legitimate land value and must not be replaced indiscriminately.",
   "recommended_action": "Preserve an all-missing column/tile mask through reductions and apply the verified land domain. Test partially missing tiles and zero tile fractions explicitly. Reproduce land values unchanged where inputs are valid.",
-  "development_team_action": "MOPPy development: extend the domain-preserving treatment from merged #854 to mrfso and land-mean tran, including partial missing and zero-weight tiles. Preserve legitimate zero values and the different grid-cell meaning of 3hr tran. No native-model error has been established.",
+  "development_team_action": "MOPPy: extend missing-domain preservation to mrfso and ESM1-6 land-mean tran. The mrso fix in #854 already exists. Preserve genuine zeros, handle missing positive-weight tiles, and keep the different grid-cell meaning of 3-hourly tran. No native-model defect was established.",
   "affected_dataset_versions": 312,
   "file_references": 5735,
   "file_list": "affected-files.txt",
@@ -30,5 +30,9 @@
     "C4MIP",
     "CMIP",
     "ScenarioMIP"
-  ]
+  ],
+  "validation": "Fresh Gadi mrfso, tran and mrso preserve every valid land value, including 2,434 coastal cells, and encode all 16,975 ocean cells as missing. The new helper mode is opt-in; 167 focused tests passed.",
+  "implementation_or_validation_pr": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/pull/865",
+  "tested_candidate_commit": "dc0d16fcb92c5cfebf48a3da4e3a969647b83f96",
+  "dataset_versions_in_scope": 312
 }

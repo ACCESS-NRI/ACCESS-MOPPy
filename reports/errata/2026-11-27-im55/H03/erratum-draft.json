@@ -1,7 +1,7 @@
 {
   "audit_id": "H03",
   "title": "Soil-layer thickness files call layer numbers depths in metres",
-  "status": "DRAFT \u2014 not submitted to ESGF",
+  "status": "DRAFT — not submitted to ESGF",
   "proposed_severity": "High",
   "model": "ACCESS-ESM1-6",
   "audit_date": "2026-11-27",
@@ -10,7 +10,7 @@
   "scientific_evidence": "All 138 fixed-file headers have the same false physical coordinate. The resource supplies dimensionless sdepth indices; publication relabels them as depth in metres. The sampled thickness data themselves are the correct [.022,.058,.154,.409,1.085,2.872] m.",
   "impact": "Joining or interpolating slthick with tsl or mrsol by physical depth silently mismatches layers. The raw thickness numbers can still be used by verified layer index.",
   "recommended_action": "Assign the shared native CABLE centres and bounds before publication. Check missing ocean values as well: the sampled resource-derived thickness also uses zero outside land. Preserve real layer thicknesses.",
-  "development_team_action": "MOPPy development: use the same CABLE layer centres and bounds as corrected soil-moisture/temperature products; inspect the static resource's ocean mask. CABLE developers only need to confirm provenance if the resource's geometry differs from the established constants.",
+  "development_team_action": "MOPPy: apply shared CABLE physical centres/bounds to the slthick resource and mask its all-zero ocean columns. Both supported models use this resource; the implementation covers both. Native model geometry is consistent, so no model-code change is indicated.",
   "affected_dataset_versions": 138,
   "file_references": 138,
   "file_list": "affected-files.txt",
@@ -30,5 +30,9 @@
     "C4MIP",
     "CMIP",
     "ScenarioMIP"
-  ]
+  ],
+  "validation": "Fresh Gadi CMIP7 and CMIP6 slthick outputs preserve all 65,190 valid layer thicknesses, restore 16,975 ocean-column masks and align with fresh tsl/mrsol coordinates. All 277 focused tests passed.",
+  "implementation_or_validation_pr": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/pull/869",
+  "tested_candidate_commit": "c2711693ed375797d9bf17c0bdd0a0ffb83c6f5d",
+  "dataset_versions_in_scope": 138
 }

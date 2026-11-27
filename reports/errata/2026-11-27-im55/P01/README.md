@@ -1,40 +1,33 @@
-# Investigate field capacity: are metres of water labelled as kg/m²?
+# Critical: soil field capacity uses wilting point and misses water-mass conversion
 
-## What is going on?
+The capacity file uses wilting point, when plants already struggle to extract water, instead of field capacity, the water left after excess has drained away. It also omits the conversion from water depth to water mass.
 
-The published soil-water capacity tops out at only 1.20 kg/m² for a 4.6 m soil column. That looks more like a depth of water in metres than a mass per area, suggesting a possible missing water-density conversion. This is not confirmed yet.
+For example: The old maximum says the whole 4.6 m soil column holds only about 1.2 mm of water at field capacity. The corrected maximum is about 1,766 mm. A drought ratio using the old capacity as its denominator would be greatly inflated. Multiplying by 1,000 alone still leaves the wrong soil property.
 
-For example: Taken literally, the biggest capacity would be only about 1.2 mm of water across the entire soil column. A drought metric dividing soil water by this capacity could be wildly inflated if the suspected ×1000 mistake is real.
+**Recommended seriousness:** Critical. **Status:** DRAFT — confirmed; not submitted to ESGF.
 
-## What the audit actually found
+## Evidence and scope
 
-All 138 fixed-file headers were inspected; numerical samples across the 15 r1 experiments have the same suspicious range, 0–1.199801 kg m⁻² for a 4.6 m soil column. A missing ×1000 water-density conversion is plausible. However, the bundled resource already has the low values and the kg m⁻² label, so the native generation step has not been independently reconstructed. Do not apply a factor from plausibility alone.
+All 138 published fixed files match the old resource. It equals native UM STASH 40 (wilting fraction) ×4.6 m on all 10,865 land cells. The deployed UM7/CABLE source establishes STASH 41 as field capacity, copied through the six layers. Integrating it through those layers with water density 1,000 kg/m3 produces corrected/old ratios of 1,388–2,906 on 7,431 positive cells. Native permanent-ice zeros and ocean masks are preserved.
 
-**Proposed severity:** Potentially Critical. **Status:** PROVISIONAL — do not submit as a confirmed erratum.
+All 138 listed fixed files were compared numerically over their full grids and confirmed to contain the old erroneous resource.
 
-The 27 November 2026 im55 inventory identifies **138 current dataset versions and 138 file references** for this item. These are candidate files to investigate, not a confirmed withdrawal list.
-
-Example immutable file:
-```
-/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-bgc/r1i1p1f1/glb/fx/mrsofc/ti-u-hxy-lnd/g115/v20261008/mrsofc_ti-u-hxy-lnd_fx_glb_g115_ACCESS-ESM1-6_1pctCO2-bgc_r1i1p1f1.nc
-```
+Inventory scope: **138 dataset versions / 138 file references**. [Exact list](affected-files.txt) · [Dataset/version inventory](datasets.json) · [Machine-readable draft](erratum-draft.json). List SHA-256: `8ded1b12e83ce8b4f518ee412b96734560aabcb1427400aaf1c6f3dd17602d5a`.
 
 ## Who needs to act?
 
-Resource/CABLE development: recover the restart field-capacity diagnostic and generation recipe from PR #246, then reconstruct the full-column quantity with explicit units. MOPPy must not insert ×1000 just because it seems plausible. Publication action stays provisional until that comparison is done.
+MOPPy/resource developers: review PR #871. No model-physics change is indicated. Publication team: replace the 138 audited ESM1-6 files. ESM1-5 maintainers should investigate the shared legacy resource separately; its mapping and publication scope are unchanged by this fix.
 
-## Proposed correction and acceptance check
+## Correction and acceptance
 
-Recover the restart field-capacity diagnostic and the resource-generation recipe referenced in PR #246. Recompute the six-layer integral with explicit volumetric fraction, layer thickness and water density; compare masks and cell-by-cell values before assigning a confirmed severity.
+Use the reproducibly generated ESM1-6-specific STASH 41 resource, validate the complete fixed field and publish replacements for all 138 listed files. Preserve valid ice zeros and the native mask; do not add lake-reservoir water or unverified tile weights.
 
-## Errata draft and exact file list
+## Gadi validation
 
-A formal draft and a complete newline-delimited list of the 138 candidate files have been prepared. See [`candidate-files.txt`](candidate-files.txt), [`datasets.json`](datasets.json), and [`erratum-draft.json`](erratum-draft.json). File-list SHA-256: `8ded1b12e83ce8b4f518ee412b96734560aabcb1427400aaf1c6f3dd17602d5a`.
+Fresh Gadi fixed-field output agrees with an independent native six-layer reconstruction within 4.55e-13 kg/m2. An independent reviewer repeated the native comparison and checked deployed model-source conventions. Seven targeted local tests and the Gadi resource/mapping test passed.
 
-The `Need Errata` label tracks the requested investigation; it does not declare this suspected problem confirmed. Do not retract or rescale on this issue alone.
+[Implementation or validation PR](https://github.com/ACCESS-NRI/ACCESS-MOPPy/pull/871) at `036c5a285b64e15a3ddf1dee0382986cebe997fa`.
 
-Related work: #246.
+Tracking: [862](https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/862) · Audit ID **P01**.
 
-Audit tracking ID: **P01**. No published data have been modified.
-
-Tracking issue: [862](https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/862).
+No published data or ESGF records were changed. Replacement versions and ESGF erratum identifiers remain unset.

@@ -1,40 +1,33 @@
 # Hybrid-height bounds mix up the bottom and top of atmospheric layers
 
-## What is going on?
-
 We sort the b coefficients into numerical order on their own. But a and b must describe the same physical interface together. Sorting only b pairs the bottom height term with the top terrain term.
 
 For example: Above the highest piControl terrain, reconstructed interfaces are displaced by up to 286 m and neighbouring layers overlap by up to 571 m. A calculation that integrates cloud over layer thickness can therefore be wrong even when the cloud values themselves are fine.
 
-## What the audit actually found
+**Recommended seriousness:** High. **Status:** DRAFT — not submitted to ESGF.
+
+## Evidence and scope
 
 All 422 first-file headers show b bounds in ascending numeric order while height-coefficient bounds follow increasing altitude. For the first layer a=[0,49.9989] m but b=[0.9942963,1]; the physically paired b vertices should be [1,0.9942963]. Reversing each b pair agrees with the ESMValCore reference within numerical precision. With z=a+b×orog, the piControl maximum orography (5,499.87 m) gives interface errors up to 285.95 m and adjacent-layer overlaps up to 570.63 m. The existing lev_bnds formula_terms explicitly pairs these arrays, so the mismatch affects the encoded physical boundaries.
 
-**Proposed severity:** High. **Status:** DRAFT — not submitted to ESGF.
+Complete file list within the identified release versions; numerical confirmation was sampled, not a scan of every value.
 
-The 27 November 2026 im55 inventory identifies **422 current dataset versions and 6,991 file references** for this item. This is the full release extent, not a claim that every value in every file was checked.
-
-Example immutable file:
-```
-/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-bgc/r1i1p1f1/glb/mon/cl/tavg-al-hxy-u/g115/v20261008/cl_tavg-al-hxy-u_mon_glb_g115_ACCESS-ESM1-6_1pctCO2-bgc_r1i1p1f1_020101-020912.nc
-```
+Inventory scope: **422 dataset versions / 6,991 file references**. [Exact list](affected-files.txt) · [Dataset/version inventory](datasets.json) · [Machine-readable draft](erratum-draft.json). List SHA-256: `827f9fb5cae29964f2607c15ff51fcbfa8a2e0cbb0719cbc40fca614541b5648`.
 
 ## Who needs to act?
 
-MOPPy development: remove independent b-bound sorting while preserving source interface pairing and formula_terms. WCRP checker development: if VAR012 insists these decreasing coefficients have ascending bounds, report that checker assumption with a paired-coordinate example; do not distort scientific coordinates to satisfy it.
+MOPPy: remove independent b-bound sorting and retain native a/b interface pairing. cc-plugin-wcrp 2.3.5 already accepts decreasing coefficients, so no new VAR012 checker issue is indicated. Existing unrelated CF advisory #662 remains. Publication team: replace the affected releases after physical-coordinate validation.
 
-## Proposed correction and acceptance check
+## Correction and acceptance
 
 Preserve the common physical interface order of a and b. Remove independent np.sort on b_bnds, preserve lev_bnds formula_terms="a: lev_bnds b: b_bnds orog: orog", and validate reconstructed altitude continuity over ocean and high terrain. Do not sort one formula term just to satisfy a checker.
 
-## Errata draft and exact file list
+## Gadi validation
 
-A formal draft and a complete newline-delimited list of the 6,991 affected-release files have been prepared. See [`affected-files.txt`](affected-files.txt), [`datasets.json`](datasets.json), and [`erratum-draft.json`](erratum-draft.json). File-list SHA-256: `827f9fb5cae29964f2607c15ff51fcbfa8a2e0cbb0719cbc40fca614541b5648`.
+Fresh Gadi cl, cli, clw, pfull and model-level co23D preserve data, masks and coordinate centres. The sampled interface mismatch of up to 285.946 m and overlap of 570.625 m disappear; phalf remains unchanged. All 115 focused tests passed.
 
-Keep this issue open for publication remediation even when the code fix merges. Corrected public data need a new version and an erratum; do not overwrite existing versions.
+[Implementation or validation PR](https://github.com/ACCESS-NRI/ACCESS-MOPPy/pull/867) at `7040d684deaeddded9c6cebc6752a05fa2553ed4`.
 
+Tracking: [857](https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/857) · Audit ID **H01**.
 
-
-Audit tracking ID: **H01**. No published data have been modified.
-
-Tracking issue: [857](https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/857).
+No published data or ESGF records were changed. Replacement versions and ESGF erratum identifiers remain unset.

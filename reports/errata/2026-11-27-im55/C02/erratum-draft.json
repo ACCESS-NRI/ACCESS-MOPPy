@@ -1,16 +1,16 @@
 {
   "audit_id": "C02",
   "title": "Erratum: some monthly topsoil moisture still includes too much soil",
-  "status": "DRAFT \u2014 not submitted to ESGF",
+  "status": "DRAFT — not submitted to ESGF",
   "proposed_severity": "Critical",
   "model": "ACCESS-ESM1-6",
   "audit_date": "2026-11-27",
   "description": "The file says water in the top 10 cm, but the older calculation takes too much of the third soil layer. The code was fixed, but older monthly publications were not all replaced.",
-  "example": "In January 0101 piControl, affected land cells contain 39\u201386% more water than the correctly integrated top 10 cm. A user comparing daily and monthly topsoil could mistake processing differences for climate behaviour.",
-  "scientific_evidence": "Native CABLE interfaces are 0, .022, .080, .234, .643, 1.728 and 4.6 m. Correct topsoil mass is layer1 + layer2 + layer3 \u00d7 .020/.154. The old recipe uses (.1\u2212.051)/(.157\u2212.051), including 46.2% of layer 3 instead of 13.0%. January 0101 piControl matches that old recipe within 1.31\u00d710\u207b\u2076 kg m\u207b\u00b2. Its published/correct ratio is 1.391\u20131.861 over 10,865 land cells; the unweighted mean ratio is 1.536. Another 16,975 missing ocean cells become zero. All 58 first-file headers retain six orphan depth indices labelled cm.",
+  "example": "In January 0101 piControl, affected land cells contain 39–86% more water than the correctly integrated top 10 cm. A user comparing daily and monthly topsoil could mistake processing differences for climate behaviour.",
+  "scientific_evidence": "Native CABLE interfaces are 0, .022, .080, .234, .643, 1.728 and 4.6 m. Correct topsoil mass is layer1 + layer2 + layer3 × .020/.154. The old recipe uses (.1−.051)/(.157−.051), including 46.2% of layer 3 instead of 13.0%. January 0101 piControl matches that old recipe within 1.31×10⁻⁶ kg m⁻². Its published/correct ratio is 1.391–1.861 over 10,865 land cells; the unweighted mean ratio is 1.536. Another 16,975 missing ocean cells become zero. All 58 first-file headers retain six orphan depth indices labelled cm.",
   "impact": "Topsoil water amount, soil-moisture anomalies expressed relative to capacity, and comparisons with daily output are compromised. The reported percentage range is one native-data comparison, not an archive-wide maximum or an area-weighted bias.",
-  "recommended_action": "Regenerate the 58 affected monthly datasets using the corrected native-interface integration. Write scalar depth 5 cm with 0\u201310 cm bounds and preserve missing columns. A constant scale factor cannot repair spatially varying soil profiles.",
-  "development_team_action": "MOPPy development: #817 already fixed the geometry; verify it rather than write a second implementation. Publication team: regenerate the 58 older monthly releases. CABLE geometry is established; no model-code bug is inferred.",
+  "recommended_action": "Regenerate the 58 affected monthly datasets using the corrected native-interface integration. Write scalar depth 5 cm with 0–10 cm bounds and preserve missing columns. A constant scale factor cannot repair spatially varying soil profiles.",
+  "development_team_action": "The source correction is already merged in PR #819 and released in MOPPy 1.9.0. Publication team: regenerate the 58 older monthly releases. The 80 ScenarioMIP monthly and 18 daily releases with corrected sampled geometry are excluded from this manifest. No CABLE model-code change is indicated.",
   "affected_dataset_versions": 58,
   "file_references": 1141,
   "file_list": "affected-files.txt",
@@ -28,5 +28,9 @@
   "activity_ids": [
     "C4MIP",
     "CMIP"
-  ]
+  ],
+  "validation": "Fresh Gadi outputs from one real archived month and one real archived day exactly match the independent top-10 cm integral on 10,865 land cells, preserve 16,975 ocean masks, and write scalar depth 5 cm with bounds 0–10 cm. The old monthly output remains 39–86% high in that sample; 132 focused tests passed.",
+  "implementation_or_validation_pr": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/pull/870",
+  "tested_candidate_commit": "26ff8fd44814d56da795e5302edb5554e638cf11",
+  "dataset_versions_in_scope": 58
 }
