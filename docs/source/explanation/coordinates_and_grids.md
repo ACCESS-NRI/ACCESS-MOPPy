@@ -66,13 +66,13 @@ It requires `f90nml` to parse the Fortran namelist, available via the
 
 ### Hybrid-height normalisation during CMORisation
 
-Even with correct coefficients, hybrid-height metadata needs repair before it is
-CF- and WCRP-compliant. `Atmosphere_CMORiser`
-(`src/access_moppy/atmosphere.py`) handles three quirks:
+`Atmosphere_CMORiser` (`src/access_moppy/atmosphere.py`) preserves the interface
+geometry and prepares hybrid-height metadata for publication.
 
-- **Bounds ordering** (`_normalize_hybrid_bounds`): some UM files encode `b_bnds`
-  as descending `[upper, lower]` pairs, whereas the WCRP VAR012 check expects each
-  pair to bracket `b` with ordered bounds; the pairs are sorted ascending.
+- **Bounds ordering** preserves the native UM vertex pairs. Each vertex of
+  `lev_bnds` and `b_bnds` describes the same interface in `z = a + b * orog`.
+  In a terrain-following layer, `a` increases with height while `b` decreases.
+  Both coefficients keep their physical interface order.
 - **Spurious time dimensions** (`remove_spurious_time_dimensions`): when combining
   multi-file datasets, xarray conservatively broadcasts time-invariant coordinate
   and bounds variables (e.g. `lat_bnds`) along `time`. ACCESS grids are static for
