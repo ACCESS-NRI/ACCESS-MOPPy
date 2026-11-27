@@ -3405,7 +3405,7 @@
                 "operation": "load_ressource_data",
                 "args": [
                     {
-                        "literal": "fx.mrsofc_ACCESS-ESM.nc"
+                        "literal": "fx.mrsofc_ACCESS-ESM1-6.nc"
                     },
                     {
                         "literal": "mrsofc"
