@@ -75,3 +75,21 @@ Validated on 28 November 2026:
 Mapping availability and sampled input headers do not establish scientific
 correctness or full archive coverage. Time subsets from the request are displayed
 and exported in the report, but are not applied to native batch year settings.
+
+## Overview and explicit request selection — 0.1.0b4
+
+Validated on 28 November 2026:
+
+- The root URL and unknown routes open Overview. Direct builder links still work.
+  Overview displays the session draft, saved reviews, recent batches, empty/error
+  states and getting-started shortcuts. Recent batches open their saved detail.
+- Request results remain a separate preview until **Add selected variables to
+  batch** is clicked. Browser checks verify the unchanged batch after lookup,
+  filtering/ticking results, explicit addition, duplicate prevention, preservation
+  of existing choices/resources, checked export and confirmation/focus transfer.
+- Browser checks cover failed/stale lookups, stale input scans, YAML edits preserved
+  when returning through Overview, all three targets, report export and existing
+  builder workflows. Desktop/light and narrow/dark layouts were inspected.
+- All 41 package tests passed. Ruff, JavaScript syntax and diff checks passed.
+  Scientific request and assessment implementations are unchanged. Browser job
+  APIs are intercepted; these checks do not submit jobs.

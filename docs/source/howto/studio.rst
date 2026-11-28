@@ -53,6 +53,13 @@ resources and continue after the session ends.
 Load or build a batch
 ---------------------
 
+Studio opens on **Overview**, which summarises the current session's draft,
+saved reviews and recent batches. **Getting started** offers direct links to
+the CMIP7 Data Request, YAML import and manual variable selection. Selecting a
+recent batch opens its saved review or progress. Navigation preserves the draft;
+reloading the page starts a fresh editing session. **Workflow guide** provides
+the detailed steps, and **Create a batch** opens the configuration builder.
+
 1. Open **Create a batch**. Enter an existing Gadi ``batch_config.yml`` path and
    select **Load path**, upload a local YAML file, or use **New configuration**.
    New configurations default to CMIP7 and the monthly compound names for tas,
@@ -109,21 +116,29 @@ See :doc:`../reference/configuration` for MOPPy's scientific settings.
 Find CMIP7 experiment variables and assess inputs
 ------------------------------------------------
 
-With **CMIP7** selected, choose a pinned **Request release** (default
-``v1.2.2.5``) and **Priority cutoff** in **Find the experiment's variables**.
-**Browse experiments** populates the Experiment ID suggestions above; type an
-experiment name there, then select **Load experiment request**. The official
-CMIP7 Data Request API supplies the names, priorities and time subsets. Cutoffs
-are cumulative: High includes Core and High. This first version includes all
-opportunities; it does not search a CMIP6 or CMIP6Plus request.
+Open **Find requested variables** from Overview, or use **Add variables from the
+CMIP7 Data Request** in the builder. With CMIP7 selected, follow its three steps:
 
-New variables enter the checklist **unchecked**. Existing names, selections and
-resource overrides are retained. The lookup displays mapping support from the
-selected MOPPy runtime and model. **Select mapped** selects only candidates with
-an available mapping. Unsupported products stay visible, with a reason. Search
-and the **Mapping / input assessment** filter help narrow the list. Requests are
-never silently truncated: a combined checklist over 2000 variables requires a
-narrower priority cutoff or a fresh batch.
+1. **Find your experiment's request.** Enter an Experiment ID (shared with the
+   batch), a pinned **Request release** (default ``v1.2.2.5``) and a **Priority
+   cutoff**. **Load experiment suggestions** retrieves the available names for
+   the Experiment ID field. Select **Find requested variables** to fetch a preview.
+2. **Choose variables from the results.** The preview shows requested names,
+   priorities, mapping support and entries already in the batch. Mapped results
+   are ticked initially; filter the results and change the ticks as needed.
+   Searching and ticking these results do not change the batch variable list.
+3. **Add your selection to the batch.** The button shows the selected count.
+   It merges only those names into **Batch variables** and checks them for export
+   and review. Existing variables, selections and resource overrides are kept,
+   and duplicate names are not added. The confirmation shows new/existing counts
+   and takes you to the batch list. You can then scan inputs or refine the list.
+
+The official CMIP7 Data Request API supplies names, priorities and time subsets.
+Priority cutoffs are cumulative: High includes Core and High. This first version
+includes all opportunities; it does not search a CMIP6 or CMIP6Plus request.
+Unsupported products stay visible with a reason and can be added deliberately.
+A selection that would exceed 2000 batch variables is rejected without changing
+the draft; choose fewer results or a narrower priority cutoff.
 
 Set the input folder and optional first/last years, then select **Scan checklist
 inputs**. This read-only check works for CMIP7, CMIP6 and CMIP6Plus. It follows

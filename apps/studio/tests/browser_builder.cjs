@@ -42,7 +42,7 @@ async function main() {
     const row = name => page.locator('.variable-row').filter({has: page.locator('code', {hasText: new RegExp('^' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$')})});
     const checked = name => row(name).locator('[data-select-variable]');
     const click = async id => { await page.locator('#' + id).click(); await expect(page.locator('#' + id)).toBeEnabled(); };
-    await page.goto(url);
+    await page.goto(url + '#build');
     await expect(page.locator('#variable-count')).toHaveText('3 of 3 selected');
     const template = await (await page.request.get(url + 'api/template', {headers: {'X-MOPPY-Token': token}})).json();
     const cmip7Variables = [

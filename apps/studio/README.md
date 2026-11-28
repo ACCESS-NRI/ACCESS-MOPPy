@@ -6,7 +6,7 @@ CMORisation progress. It uses the MOPPy logo and the ACCESS blue/cyan palette
 shared with ILAMB Studio, with navigation inspired by the Intake catalog docs.
 
 **In development:** the interface and supported workflow may change. Studio is
-versioned independently (`0.1.0b3`) and displays a persistent beta label.
+versioned independently (`0.1.0b4`) and displays a persistent beta label.
 
 See the [user guide](../../docs/source/howto/studio.rst) for a complete walkthrough
 and [development guide](../../docs/source/development/studio.rst) for packaging,
@@ -32,6 +32,14 @@ scientific jobs under your own account, with your project allocation and data
 access. Loading multiple Studio modules in the same session is not supported.
 
 ## Workflow
+
+Studio opens on **Overview**, with getting-started options, the current draft,
+saved reviews and recent batches. Choose **Find requested variables** to jump
+to the CMIP7 request workflow, or open the batch builder to import/edit a config.
+The request workflow has three explicit steps: find an experiment's request,
+review and tick the results, then **Add selected variables to batch**. Searching
+alone leaves the batch variable list unchanged. Added variables are checked in
+**Batch variables**, ready for input assessment and further editing.
 
 1. **Create a batch:** load a Gadi YAML path, upload a local YAML file, or use the
    builder. New configurations use CMIP7 with monthly compound identifiers for
