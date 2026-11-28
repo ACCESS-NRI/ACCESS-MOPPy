@@ -9,14 +9,17 @@
   </head>
   <body>
     <aside class="sidebar">
-      <a class="brand" href="#build"
+      <a class="brand" href="#home"
         ><img src="moppy-logo.png" alt="MOPPy" /><span
           >STUDIO <small>for ARE</small></span
         ></a
       >
       <div class="workspace-label">CMORISATION WORKSPACE</div>
       <nav aria-label="Main navigation">
-        <a href="#build" data-page="build" class="active"
+        <a href="#home" data-page="home" class="active"
+          ><span class="nav-icon">⌂</span> Overview</a
+        >
+        <a href="#build" data-page="build"
           ><span class="nav-icon">+</span> Create a batch</a
         >
         <a href="#runs" data-page="runs"
@@ -24,7 +27,7 @@
           <span id="run-count" class="nav-count">0</span></a
         >
         <a href="#guide" data-page="guide"
-          ><span class="nav-icon">▧</span> Getting started</a
+          ><span class="nav-icon">▧</span> Workflow guide</a
         >
       </nav>
       <div class="sidebar-section">
@@ -86,7 +89,35 @@
             /><button id="connect" class="primary">Connect</button>
           </div>
         </section>
-        <section id="page-build">
+        <section id="page-home">
+          <div class="page-heading">
+            <div><div class="eyebrow">YOUR CMORISATION WORKSPACE</div><h1>Welcome to MOPPy Studio</h1><p>Prepare your variable list, review a batch, and follow its progress on Gadi.</p></div>
+            <a href="#build" class="button primary">Open batch builder →</a>
+          </div>
+          <div class="home-stats">
+            <section class="panel"><span class="eyebrow">CURRENT DRAFT</span><strong id="home-draft-count">—</strong><p>variables selected in this session</p><small id="home-draft-context">Loading draft…</small><a href="#build">Continue editing →</a></section>
+            <section class="panel"><span class="eyebrow">SAVED REVIEWS</span><strong id="home-review-count">—</strong><p>batches awaiting submission</p><a href="#runs">Review saved batches →</a></section>
+            <section class="panel"><span class="eyebrow">BATCH HISTORY</span><strong id="home-run-count">—</strong><p>saved or attached batches</p><a href="#runs">Open runs & progress →</a></section>
+          </div>
+          <section class="panel home-start">
+            <div class="section-title"><div><h2>Getting started</h2><p>Choose a starting point. You can edit every selection before submitting.</p></div></div>
+            <div class="home-options">
+              <article><span class="tag">CMIP7 DATA REQUEST</span><h3>Find variables for an experiment</h3><p>Search the request, tick the variables you want, then add that selection to your batch.</p><a href="#build" data-build-section="request-panel" class="button secondary">Find requested variables →</a></article>
+              <article><span class="tag">EXISTING CONFIGURATION</span><h3>Continue from a YAML file</h3><p>Upload a config or load one from Gadi, then adjust its variables, paths and resources.</p><a href="#build" data-build-section="import-panel" class="button secondary">Load a batch config →</a></article>
+              <article><span class="tag">BUILD YOUR OWN</span><h3>Choose variables by hand</h3><p>Use a starter list or enter variable names for CMIP6, CMIP6Plus or CMIP7.</p><a href="#build" data-build-section="variables-panel" class="button secondary">Choose batch variables →</a></article>
+            </div>
+          </section>
+          <section class="panel home-workflow">
+            <h2>From a variable list to a running batch</h2>
+            <ol><li><strong>Choose variables</strong><span>Preview request results, import a config or add names by hand.</span></li><li><strong>Configure & assess</strong><span>Set your paths and resources. Scan inputs and refine the selected list.</span></li><li><strong>Review & submit</strong><span>Check the saved YAML and job details, then submit explicitly.</span></li><li><strong>Follow progress</strong><span>Inspect variable status and logs in Runs & progress.</span></li></ol>
+            <a href="#guide">Read the workflow guide →</a>
+          </section>
+          <section class="panel">
+            <div class="section-title home-recent-heading"><div><h2>Recent batches</h2><p>Saved reviews and attached runs from your Studio workspace.</p></div><button id="home-refresh" class="secondary" type="button">Refresh summary</button></div>
+            <div id="home-recent" class="runs-list" aria-live="polite"><p>Loading recent batches…</p></div>
+          </section>
+        </section>
+        <section id="page-build" hidden>
           <div class="page-heading">
             <div>
               <div class="eyebrow">PREPARE · SUBMIT · MONITOR</div>
@@ -124,10 +155,10 @@
           </div>
           <div class="build-layout">
             <div class="editor-column">
-              <section class="panel import-panel">
+              <section class="panel import-panel" id="import-panel" tabindex="-1">
                 <div>
                   <h2>Start with a batch config</h2>
-                  <p>Load an existing YAML file, or use the builder below.</p>
+                  <p>Load an existing YAML file, or <a href="#build" data-build-section="request-panel">find variables from the CMIP7 Data Request</a>.</p>
                 </div>
                 <div class="inline">
                   <input
@@ -194,9 +225,8 @@
                     ><label
                       >Experiment ID<input
                         data-key="experiment_id"
-                        list="request-experiments"
                         placeholder="piControl"
-                    /><datalist id="request-experiments"></datalist></label>
+                    /></label>
                     <label
                       >Variant label<input
                         data-key="variant_label"
@@ -264,20 +294,34 @@
                     /></label>
                   </div>
                 </section>
-                <section class="panel request-panel" id="request-panel">
-                  <div class="section-title"><div><h2>Find the experiment’s variables</h2><p>Use the official CMIP7 Data Request to populate the checklist for the Experiment ID above.</p></div><span class="tag">CMIP7</span></div>
+                <section class="panel request-panel" id="request-panel" tabindex="-1">
+                  <div class="section-title"><div><h2>Add variables from the CMIP7 Data Request</h2><p>Search → choose variables → add to batch. Searching previews the request; only the Add button changes your variable list.</p></div><span class="tag">CMIP7</span></div>
+                  <p id="request-target-note" class="warning" hidden>Choose CMIP7 under CMORisation target to use this request search.</p>
+                  <div class="request-step-title"><span class="section-number">1</span><h3>Find your experiment’s request</h3></div>
+                  <label>Experiment ID <span class="optional">shared with this batch</span><input id="request-experiment" list="request-experiments" placeholder="Type an experiment, e.g. piControl"><datalist id="request-experiments"></datalist></label>
+                  <p id="request-model-context" class="helper"></p>
                   <div class="form-grid">
                     <label>Request release<input id="request-version" value="v1.2.2.5" spellcheck="false" aria-describedby="request-scope"></label>
                     <label>Priority cutoff<select id="request-priority"><option value="Core">Core only</option><option value="High">Core + High</option><option value="Medium">Core + High + Medium</option><option value="Low">All priorities</option></select></label>
                   </div>
                   <p id="request-scope">Includes all opportunities in the chosen release. Requested time subsets are shown for review; they do not automatically change the batch’s year range.</p>
                   <label class="request-offline"><input id="request-offline" type="checkbox"> Use cached request only (offline)</label>
-                  <div class="variable-toolbar"><button id="request-experiments-load" type="button" class="secondary">Browse experiments</button><button id="request-load" type="button" class="secondary">Load experiment request</button></div>
-                  <p id="request-status" role="status">New request variables are added unchecked. Existing choices and resource settings are retained.</p>
+                  <div class="variable-toolbar"><button id="request-experiments-load" type="button" class="secondary">Load experiment suggestions</button><button id="request-load" type="button" class="primary">Find requested variables</button></div>
+                  <p id="request-status" role="status">Enter an experiment and find its requested variables. Your batch variable list stays unchanged until you add a selection.</p>
+                  <div id="request-results" hidden>
+                    <div class="request-step-title"><span class="section-number">2</span><h3>Choose variables from the results</h3></div>
+                    <p id="request-result-summary" role="status"></p>
+                    <p class="helper">Mapped variables are ticked initially. Review the list; you can change every tick. Mapping support still needs an input check.</p>
+                    <div class="variable-filters"><label>Search request results<input id="request-search" type="search" placeholder="Filter by variable name…"></label><label>Mapping support<select id="request-mapping"><option value="">All requested variables</option><option value="mapped">Mapped by MOPPy</option><option value="unsupported">No supported mapping</option></select></label></div>
+                    <div class="variable-toolbar"><button id="request-select-mapped" class="secondary" type="button">Select mapped results</button><button id="request-select-visible" class="secondary" type="button">Select shown results</button><button id="request-clear-selection" class="secondary" type="button">Clear result selection</button><small id="request-visible"></small></div>
+                    <div id="request-list" class="request-list" aria-label="Data Request results to choose from"></div>
+                    <div class="request-add-step"><div class="request-step-title"><span class="section-number">3</span><h3>Add your selection to the batch</h3></div><p id="request-selection-count" role="status"></p><p class="helper">Selected results will be checked in Batch variables below. Existing variables and resource settings are kept; duplicate names are added once.</p><button id="request-add" class="primary" type="button" disabled>Add selected variables to batch →</button><p id="request-add-feedback" role="alert"></p></div>
+                  </div>
                   <a href="https://wcrp-cmip.github.io/cmip7-guidance/latest/CMIP7/Guidance_for_modellers/" target="_blank" rel="noreferrer">CMIP7 Data Request guidance ↗</a>
                 </section>
-                <section class="panel" id="variables-panel">
-  <div class="section-title"><span class="section-number">03</span><div><h2>Choose variables</h2><p>Tick the variables to include in this batch. Expand a row to change its resources.</p></div><span id="variable-count" class="tag" role="status">0 selected</span></div>
+                <section class="panel" id="variables-panel" tabindex="-1">
+  <div class="section-title"><span class="section-number">03</span><div><h2>Batch variables</h2><p>This is the list used by your batch. Only ticked variables enter the downloaded YAML and job review.</p></div><span id="variable-count" class="tag" role="status">0 selected</span></div>
+  <div id="request-added" class="request-added" role="status" hidden></div>
   <div class="variable-toolbar"><button id="use-starter-variables" class="secondary" type="button">Use CMIP7 starter variables</button><small>Replaces the list with monthly tas, pr and tos.</small></div><p id="target-variables-note" class="warning" role="status" hidden></p>
   <div class="assessment-tools"><div class="variable-toolbar"><button id="scan-inputs" class="secondary" type="button">Scan checklist inputs</button><button id="select-mapped" class="secondary" type="button" disabled>Select mapped</button><button id="select-found" class="secondary" type="button" disabled>Select inputs found</button><button id="download-assessment" class="secondary" type="button" disabled>↓ Assessment report</button></div><p id="assessment-status" role="status">Check the model mapping and sample NetCDF headers in the input folder. No job is submitted.</p><p class="helper">“Mapped” describes the installed MOPPy recipe. “Inputs found” means required native fields occur in sampled headers. Neither validates complete time coverage, units, grids, auxiliary resources or scientific correctness.</p></div>
   <div class="variable-filters"><label>Search variables<input id="variable-search" type="search" placeholder="Filter by name…"></label><label>Table / realm<select id="variable-table"><option value="">All tables / realms</option></select></label></div>
@@ -500,8 +544,10 @@
             </p>
             <h2>2. Review the job</h2>
             <p>
-              For CMIP7, browse the experiment list and load a pinned Data Request
-              release into the checklist. Scan checklist inputs to compare the
+              For CMIP7, choose an experiment and select <strong>Find requested variables</strong>.
+              Review the separate results, then use <strong>Add selected variables to batch</strong>.
+              The added variables are checked in <strong>Batch variables</strong>.
+              Scan checklist inputs to compare the
               installed model mappings with sampled NetCDF headers. Review the
               missing-input reasons and requested time subsets before selecting
               variables. A header sample does not establish full time coverage

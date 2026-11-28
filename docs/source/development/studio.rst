@@ -109,9 +109,11 @@ terminal:
 ``STUDIO_SCREENSHOT`` optionally saves a desktop screenshot. The local server and
 test must share a filesystem for the load-by-path check.
 
-``browser_request.cjs`` intercepts scientific probes and checks checklist merging,
-mapping/input filters, conservative selection, report export, mobile layout and
-discarding stale responses. To verify the actual scientific adapter in analysis3,
+``browser_request.cjs`` intercepts scientific probes and checks Overview routing,
+draft/history summaries, recent-batch navigation, separate request previews,
+explicit selection transfer, deduplication, resource retention, mapping/input
+filters, report export, mobile layout and discarding stale responses.
+To verify the actual scientific adapter in analysis3,
 run ``python tests/native_discovery_probe.py`` from ``apps/studio``. It queries
 the pinned official release, verifies an offline bridge query, creates temporary
 NetCDF fixtures, checks year filtering, table restrictions and optional inputs,

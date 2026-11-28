@@ -54,10 +54,13 @@ function action(id, fn) {
       previous = button.textContent;
     button.disabled = true;
     button.textContent = "Working…";
+    updateProbeButtons();
+    if (id === 'request-add') $('request-add-feedback').textContent = '';
     notify("");
     try {
       await fn();
     } catch (e) {
+      if (id === 'request-add') $('request-add-feedback').textContent = e.message;
       notify(e.message, true);
     } finally {
       busy = false;
@@ -70,6 +73,7 @@ function action(id, fn) {
 }
 let variableChoices = [];
 let variableEvidence = new Map(), requestInfo = null, assessmentInfo = null;
+let requestPreview = null, requestSelection = new Set(), requestPreviewKey = '', requestRevision = 0;
 const inputLabels = {
   not_scanned: 'Inputs not scanned', not_required: 'Generated / bundled inputs',
   found: 'Inputs found in sample', missing_files: 'No matching input files',
@@ -95,6 +99,16 @@ function updateProbeButtons() {
   const cmip7 = $('cmor-target').value === 'CMIP7';
   $('request-load').disabled = $('request-experiments-load').disabled = busy || !cmip7;
   $('request-panel').classList.toggle('inactive', !cmip7);
+  $('request-target-note').hidden = cmip7;
+  $('request-model-context').textContent = 'Mapping support will be checked for ' +
+    (document.querySelector('[data-key="model_id"]').value || 'the model selected above') + '.';
+  $('request-add').disabled = busy || !cmip7 || !requestPreview || !requestSelection.size;
+  if (!busy) $('request-add').textContent = requestSelection.size
+    ? `Add ${requestSelection.size} selected variables to batch →` : 'Add selected variables to batch →';
+  for (const id of ['request-select-mapped', 'request-select-visible', 'request-clear-selection']) {
+    $(id).disabled = busy || !requestPreview?.variables.length;
+  }
+  $('request-list').querySelectorAll('input').forEach(el => el.disabled = busy);
   $('scan-inputs').disabled = busy || !variableChoices.length;
   $('select-mapped').disabled = busy || ![...variableEvidence.values()].some(r => r.mapping === 'mapped');
   $('select-found').disabled = busy || ![...variableEvidence.values()].some(r => r.input_status === 'found');
@@ -103,9 +117,45 @@ function updateProbeButtons() {
 function clearEvidence(message = '') {
   variableEvidence = new Map(); requestInfo = assessmentInfo = null;
   $('assessment-status').textContent = message || 'Check the model mapping and sample NetCDF headers in the input folder. No job is submitted.';
-  $('request-status').textContent = 'New request variables are added unchecked. Existing choices and resource settings are retained.';
   $('variable-assessment').value = '';
   updateProbeButtons();
+}
+function clearRequestPreview(message = '') {
+  requestRevision++;
+  requestPreview = null; requestSelection = new Set(); requestPreviewKey = '';
+  $('request-results').hidden = true;
+  $('request-list').replaceChildren();
+  $('request-add-feedback').textContent = '';
+  $('request-status').textContent = message || 'Enter an experiment and find its requested variables. Your batch variable list stays unchanged until you add a selection.';
+  updateProbeButtons();
+}
+function requestFingerprint() {
+  const c = probeConfig();
+  return JSON.stringify([requestRevision, c.cmip_version, c.model_id, c.experiment_id,
+    $('module').value, $('request-version').value, $('request-priority').value, $('request-offline').checked]);
+}
+function visibleRequestRows() {
+  const query = $('request-search').value.trim().toLowerCase(), mapping = $('request-mapping').value;
+  return (requestPreview?.variables || []).filter(r => r.name.toLowerCase().includes(query) && (!mapping || r.mapping === mapping));
+}
+function syncRequestSelection() {
+  const known = new Map(variableChoices.map(v => [v.name, v.selected]));
+  const existing = [...requestSelection].filter(name => known.has(name)).length;
+  $('request-selection-count').textContent = `${requestSelection.size} selected in these results · ${requestSelection.size - existing} new to your batch · ${existing} already in its checklist`;
+  $('request-list').querySelectorAll('[data-existing-request]').forEach(tag => {
+    const name = tag.dataset.existingRequest;
+    tag.hidden = !known.has(name);
+    tag.textContent = known.get(name) ? 'Already selected in batch' : 'Already listed, unchecked';
+  });
+  updateProbeButtons();
+}
+function renderRequestPreview() {
+  if (!requestPreview) return;
+  const known = new Map(variableChoices.map(v => [v.name, v.selected]));
+  const visible = visibleRequestRows();
+  $('request-list').innerHTML = visible.map(r => `<label class="request-choice"><input type="checkbox" data-request-name="${esc(r.name)}" ${requestSelection.has(r.name) ? 'checked' : ''}><span><code>${esc(r.name)}</code><span class="evidence-tags"><span class="tag ${r.mapping === 'mapped' ? '' : 'evidence-warning'}">${r.mapping === 'mapped' ? 'Mapped by MOPPy' : 'No supported mapping'}</span><span class="tag">${esc(r.priority)}</span><span class="tag" data-existing-request="${esc(r.name)}" ${known.has(r.name) ? '' : 'hidden'}></span></span><small>${[r.reason, r.time_subsets?.length ? 'Time subsets: ' + r.time_subsets.join(', ') : ''].filter(Boolean).map(esc).join(' · ')}</small></span></label>`).join('') || '<p class="variable-empty">No request variables match these filters.</p>';
+  $('request-visible').textContent = visible.length + ' of ' + requestPreview.variables.length + ' shown';
+  syncRequestSelection();
 }
 function evidenceMatches(name, filter) {
   const r = variableEvidence.get(name);
@@ -137,36 +187,33 @@ function evidenceHTML(name) {
   return tags + `<details class="evidence-details"><summary>Request & input evidence</summary>${lines.map(s => `<p>${esc(s)}</p>`).join('')}</details>`;
 }
 async function loadRequest(catalogOnly) {
-  const c = probeConfig(), before = probeFingerprint();
+  const c = probeConfig();
   if (c.cmip_version !== 'CMIP7') throw new Error('Choose CMIP7 to search the experiment request. Input assessment supports all three targets.');
-  if (!catalogOnly && !c.experiment_id) throw new Error('Enter an Experiment ID above, or browse the available experiments first.');
-  $('request-status').textContent = 'Loading the official CMIP7 request and installed mappings…';
+  if (!catalogOnly && !c.experiment_id) throw new Error('Enter an Experiment ID in step 1, or load the experiment suggestions first.');
+  clearRequestPreview('Loading the official CMIP7 request and installed mappings… Your batch variable list is unchanged.');
+  const before = requestFingerprint();
   try {
     const result = await api('request', {request_version: $('request-version').value.trim(),
       priority: $('request-priority').value, model_id: c.model_id,
       experiment: catalogOnly ? '' : c.experiment_id, module: $('module').value,
       offline: $('request-offline').checked});
-    if (before !== probeFingerprint()) {
-      $('request-status').textContent = 'Settings changed during lookup. Load the request again.'; return;
+    if (before !== requestFingerprint()) {
+      $('request-status').textContent = 'Settings changed during lookup. Find requested variables again.'; return;
     }
     $('request-experiments').innerHTML = result.experiments.map(e => `<option value="${esc(e)}"></option>`).join('');
     if (catalogOnly) {
-      $('request-status').textContent = `${result.experiments.length} experiments in ${result.request_version}. Type or choose an Experiment ID above, then load its request.`;
-      document.querySelector('[data-key="experiment_id"]').focus(); return;
+      $('request-status').textContent = `${result.experiments.length} experiments available. Type or choose an Experiment ID in step 1, then click Find requested variables.`;
+      $('request-experiment').focus(); return;
     }
     checkVariables(result.variables.map(r => r.name));
-    const existing = new Set(variableChoices.map(v => v.name));
-    const additions = result.variables.filter(r => !existing.has(r.name));
-    if (existing.size + additions.length > 2000) throw new Error('The request plus existing checklist exceeds 2000 variables. Choose a higher priority cutoff or start a new batch. No variables were changed.');
-    variableChoices.push(...additions.map(r => ({name: r.name, selected: false,
-      resources: structuredClone(config.variable_resources?.[r.name] || {})})));
-    variableEvidence = new Map(result.variables.map(r => [r.name, r]));
-    requestInfo = result; assessmentInfo = null;
-    $('variable-search').value = ''; $('variable-table').value = ''; $('variable-assessment').value = '';
+    requestPreview = result; requestPreviewKey = before;
+    requestSelection = new Set(result.variables.filter(r => r.mapping === 'mapped').map(r => r.name));
+    $('request-search').value = ''; $('request-mapping').value = '';
     const mapped = result.variables.filter(r => r.mapping === 'mapped').length;
-    $('request-status').textContent = `${result.experiment} · ${result.request_version} · through ${result.priority} · all opportunities: ${result.variables.length} requested, ${mapped} mapped, ${result.variables.length - mapped} without a supported mapping. ${additions.length} new unchecked rows added.`;
-    $('assessment-status').textContent = `Mapping lookup: MOPPy ${result.version} · ${result.module}. Scan inputs to check the archive, or select mapped candidates for review.`;
-    builderChanged(); renderVariables();
+    $('request-result-summary').textContent = `${result.experiment} · ${result.request_version} · through ${result.priority} · all opportunities: ${result.variables.length} requested, ${mapped} mapped, ${result.variables.length - mapped} without a supported mapping.`;
+    $('request-status').textContent = 'Request found. Review the ticked results in step 2, then use Add selected variables to batch in step 3. Nothing has been added yet.';
+    $('request-results').hidden = false;
+    renderRequestPreview();
   } catch (e) {
     $('request-status').textContent = 'Request lookup failed. ' + e.message;
     throw e;
@@ -174,6 +221,49 @@ async function loadRequest(catalogOnly) {
 }
 action('request-experiments-load', () => loadRequest(true));
 action('request-load', () => loadRequest(false));
+action('request-add', async () => {
+  if (!requestPreview || requestPreviewKey !== requestFingerprint()) throw new Error('Request settings changed. Find requested variables again before adding them.');
+  if (!requestSelection.size) throw new Error('Tick at least one request variable to add.');
+  const known = new Map(variableChoices.map(v => [v.name, v]));
+  const additions = [...requestSelection].filter(name => !known.has(name));
+  if (known.size + additions.length > 2000) throw new Error('This selection would exceed 2000 variables in the batch. Select fewer results; your batch is unchanged.');
+  for (const r of requestPreview.variables) {
+    if (!requestSelection.has(r.name)) continue;
+    if (known.has(r.name)) known.get(r.name).selected = true;
+    else variableChoices.push({name: r.name, selected: true, resources: structuredClone(config.variable_resources?.[r.name] || {})});
+    variableEvidence.set(r.name, {...r, ...variableEvidence.get(r.name), priority: r.priority, time_subsets: r.time_subsets});
+  }
+  requestInfo = requestPreview;
+  $('variable-search').value = ''; $('variable-table').value = ''; $('variable-assessment').value = '';
+  const existing = requestSelection.size - additions.length;
+  const message = `Added ${additions.length} new variable${additions.length === 1 ? '' : 's'} and selected ${existing} existing ${existing === 1 ? 'entry' : 'entries'}. Your batch now includes ${selectedVariables().length} selected variables.`;
+  $('request-status').textContent = message;
+  $('assessment-status').textContent = `Request selection added from ${requestInfo.request_version}. Mapping lookup: MOPPy ${requestInfo.version} · ${requestInfo.module}. Scan inputs to assess these variables.`;
+  builderChanged(); renderVariables(); renderRequestPreview();
+  $('request-added').hidden = false;
+  $('request-added').textContent = message + ' Next: check your input folder, scan inputs and review the batch settings.';
+  await openBuilderSection('variables-panel');
+});
+$('request-experiment').addEventListener('input', () => {
+  const field = document.querySelector('[data-key="experiment_id"]');
+  field.value = $('request-experiment').value;
+  field.dispatchEvent(new Event('input', {bubbles: true}));
+});
+$('request-search').addEventListener('input', renderRequestPreview);
+$('request-mapping').addEventListener('change', renderRequestPreview);
+$('request-list').addEventListener('change', event => {
+  const name = event.target.dataset.requestName;
+  if (!name || busy) return;
+  if (event.target.checked) requestSelection.add(name); else requestSelection.delete(name);
+  syncRequestSelection();
+});
+for (const [id, select] of [
+  ['request-select-mapped', () => new Set(requestPreview.variables.filter(r => r.mapping === 'mapped').map(r => r.name))],
+  ['request-select-visible', () => new Set([...requestSelection, ...visibleRequestRows().map(r => r.name)])],
+  ['request-clear-selection', () => new Set()],
+]) {
+  $(id).addEventListener('click', () => { if (busy || !requestPreview) return; requestSelection = select(); renderRequestPreview(); });
+}
 action('scan-inputs', async () => {
   const c = probeConfig(), before = probeFingerprint();
   $('assessment-status').textContent = 'Scanning mapping-specific input streams and sampling NetCDF headers…';
@@ -208,10 +298,15 @@ action('download-assessment', async () => {
 for (const id of ['request-version', 'request-priority', 'request-offline', 'module']) {
   $(id).addEventListener('input', () => {
     if (id === 'request-version') $('request-experiments').innerHTML = '';
-    clearEvidence('Settings changed. Reload the request or scan inputs for current evidence.'); renderVariables();
+    clearRequestPreview('Request settings changed. Find requested variables again to preview the updated request.');
+    if (id === 'module') { clearEvidence('Runtime changed. Scan inputs for current evidence.'); renderVariables(); }
   });
 }
 $('builder').addEventListener('input', event => {
+  if (['cmip_version', 'model_id', 'experiment_id'].includes(event.target.dataset.key)) {
+    $('request-experiment').value = document.querySelector('[data-key="experiment_id"]').value;
+    clearRequestPreview('Batch identity changed. Find requested variables again for this experiment and model.');
+  }
   if (['cmip_version', 'model_id', 'experiment_id', 'input_folder', 'start_year', 'end_year'].includes(event.target.dataset.key)) {
     clearEvidence('Batch settings changed. Reload the request or scan inputs for current evidence.'); renderVariables();
   }
@@ -293,6 +388,8 @@ function syncSummary(snapshot) {
   $('summary-experiment').textContent = value('experiment_id') || '—';
   $('summary-vars').textContent = count;
   $('summary-resources').textContent = (value('cpus_per_node') || '—') + ' CPU · ' + (value('mem') || '—');
+  $('home-draft-count').textContent = count;
+  $('home-draft-context').textContent = [value('cmip_version') || 'CMIP6', value('source_id'), value('experiment_id')].filter(Boolean).join(' · ');
 }
 function renderVariables() {
   const table = $('variable-table').value;
@@ -312,8 +409,9 @@ function renderVariables() {
   $('variable-visible').textContent = visible.size + ' shown';
   $('select-visible').disabled = $('clear-visible').disabled = visible.size === 0;
   syncSummary();
+  if (requestPreview) syncRequestSelection();
 }
-function builderChanged() { plan = null; syncSummary(); }
+function builderChanged() { plan = null; $('request-added').hidden = true; syncSummary(); if (requestPreview) syncRequestSelection(); }
 $('variable-search').addEventListener('input', renderVariables);
 $('variable-table').addEventListener('change', renderVariables);
 for (const [id, selected] of [['select-visible', true], ['clear-visible', false]]) {
@@ -378,6 +476,8 @@ async function populate(data, keepChoices = false) {
   const retained = keepChoices ? variableChoices.filter(v => !names.includes(v.name)) : [];
   config = next;
   clearEvidence();
+  clearRequestPreview();
+  $('request-added').hidden = true;
   // New configurations use the template's CMIP7 defaults; unversioned imports retain legacy semantics.
   config.cmip_version ??= 'CMIP6'; config.model_id ??= 'ACCESS-ESM1-6';
   variableChoices = [...names.map(name => ({name, selected: true})), ...retained.map(v => ({name: v.name, selected: false}))]
@@ -387,6 +487,7 @@ async function populate(data, keepChoices = false) {
     if (el.type === 'checkbox') el.checked = value === true;
     else el.value = value ?? '';
   });
+  $('request-experiment').value = config.experiment_id || '';
   $('project').value = String(config.scheduler_options || '').match(/^#PBS -P (\S+)\s*$/)?.[1] || '';
   $('yaml').value = data.yaml || '';
   $('parent-info').value = parent;
@@ -440,12 +541,17 @@ $('yaml').addEventListener('input', () => {
   const revision = ++yamlRevision;
   clearTimeout(yamlTimer);
   for (const id of ['summary-target', 'summary-model', 'summary-experiment', 'summary-vars', 'summary-resources']) $(id).textContent = 'Editing YAML…';
+  $('home-draft-count').textContent = '…';
+  $('home-draft-context').textContent = 'Editing YAML…';
   yamlTimer = setTimeout(async () => {
     try {
       const parsed = await api('config/parse', {yaml: $('yaml').value});
       if (yamlMode && revision === yamlRevision) syncSummary(parsed.config);
     } catch (_) {
-      if (yamlMode && revision === yamlRevision) $('summary-vars').textContent = 'Invalid YAML';
+      if (yamlMode && revision === yamlRevision) {
+        $('summary-vars').textContent = $('home-draft-context').textContent = 'Invalid YAML';
+        $('home-draft-count').textContent = '—';
+      }
     }
   }, 350);
 });
@@ -568,10 +674,24 @@ document
       syncSummary();
     }),
   );
-$("name").addEventListener("input", syncSummary);
+$("name").addEventListener("input", () => syncSummary());
 async function loadRuns() {
-  const records = await api("runs");
+  let records;
+  try { records = await api("runs"); }
+  catch (e) {
+    $('home-review-count').textContent = $('home-run-count').textContent = '—';
+    $('home-recent').textContent = 'Batch history is unavailable. Use Refresh summary to try again.';
+    throw e;
+  }
   $("run-count").textContent = records.length;
+  $('home-review-count').textContent = records.filter(r => r.state === 'review').length;
+  $('home-run-count').textContent = records.length;
+  $('home-recent').innerHTML = records.length
+    ? records.slice(0, 4).map(r => `<button class="run-card" data-open-run="${esc(r.id)}"><span class="badge ${esc(r.state)}">${esc(r.state)}</span><h3>${esc(r.name)}</h3><small>${esc(new Date(r.created).toLocaleString())}${r.read_only ? ' · attached' : ''}</small></button>`).join('')
+    : '<div class="home-empty"><h3>No saved batches yet</h3><p>Start with the options above. Batches appear here after you save a review or attach an existing run.</p></div>';
+  $('home-recent').querySelectorAll('[data-open-run]').forEach(button => button.onclick = () => {
+    selected = button.dataset.openRun; logKind = 'monitor_out'; logVariable = null; location.hash = 'runs';
+  });
   $("runs-list").innerHTML = records.length
     ? records
         .map(
@@ -670,25 +790,45 @@ action("refresh", async () => {
   await loadRuns();
   if (selected) await loadRun(selected);
 });
-async function route() {
-  const page = ["build", "runs", "guide"].includes(location.hash.slice(1))
+action('home-refresh', loadRuns);
+async function openBuilderSection(id) {
+  location.hash = 'build';
+  await route(false);
+  if (yamlMode) {
+    await populate(await api('config/parse', {yaml: $('yaml').value}), true);
+    setEditor(false);
+  }
+  $(id).scrollIntoView({behavior: 'smooth', block: 'start'});
+  $(id).focus({preventScroll: true});
+}
+document.querySelectorAll('[data-build-section]').forEach(link => link.addEventListener('click', event => {
+  event.preventDefault();
+  if (busy) return;
+  openBuilderSection(link.dataset.buildSection).catch(e => notify(e.message, true));
+}));
+async function route(refresh = true) {
+  const page = ["home", "build", "runs", "guide"].includes(location.hash.slice(1))
     ? location.hash.slice(1)
-    : "build";
-  ["build", "runs", "guide"].forEach(
+    : "home";
+  ["home", "build", "runs", "guide"].forEach(
     (p) => ($("page-" + p).hidden = p !== page),
   );
   document
     .querySelectorAll("[data-page]")
-    .forEach((a) => a.classList.toggle("active", a.dataset.page === page));
-  if (page === "runs")
+    .forEach((a) => {
+      a.classList.toggle("active", a.dataset.page === page);
+      if (a.dataset.page === page) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+  document.title = ({home: 'Overview', build: 'Batch builder', runs: 'Runs & progress', guide: 'Workflow guide'})[page] + ' · MOPPy Studio (Beta)';
+  if (refresh && ['home', 'runs'].includes(page))
     try {
       await loadRuns();
-      if (selected) await loadRun(selected);
+      if (page === 'runs' && selected) await loadRun(selected);
     } catch (e) {
       notify(e.message, true);
     }
 }
-window.addEventListener("hashchange", route);
+window.addEventListener("hashchange", () => route());
 $("theme").onclick = () => {
   document.body.classList.toggle("dark");
   localStorage.setItem(
@@ -709,7 +849,7 @@ async function connect() {
   $("connection-dot").className = "online";
   if (!Object.keys(config).length) await populate(await api("template"));
   await loadRuns();
-  await route();
+  await route(false);
   if (!health.on_gadi)
     notify(
       "Local preview. Configuration editing is available; runtime preflight and submission require Gadi.",
@@ -739,4 +879,5 @@ setInterval(async () => {
     poll = false;
   }
 }, 15000);
+route(false).catch((e) => notify(e.message, true));
 connect().catch((e) => notify(e.message, true));
