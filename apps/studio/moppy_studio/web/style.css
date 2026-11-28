@@ -1204,3 +1204,42 @@ footer b {
     margin-left: auto;
   }
 }
+
+/* Batch variable selection and optional per-variable resources. */
+.variable-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(140px,.65fr);gap:12px}
+.variable-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0}
+.variable-toolbar small{margin-left:auto}
+.variable-list{max-height:480px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+.variable-row{padding:12px 15px;border-bottom:1px solid var(--line);border-left:3px solid transparent}
+.variable-row:last-child{border-bottom:0}
+.variable-row.included{border-left-color:var(--cyan)}
+.variable-heading{display:flex;align-items:center;gap:8px}
+.variable-heading label{display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer}
+.variable-heading input{margin:0}
+.variable-heading code{overflow-wrap:anywhere}
+.variable-heading .icon-button{font-size:20px;color:var(--muted)}
+.variable-row details{margin:5px 0 0 26px;border:0;padding:0}
+.variable-row summary{font-size:11px}
+.variable-row details p{font-size:11px;margin:10px 0}
+.variable-row .form-grid{gap:12px}
+.variable-row input{padding:8px}
+.variable-empty{padding:24px;text-align:center}
+.variable-add{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.variable-add textarea{margin-top:6px}
+.processing-options{margin-top:20px}
+#variables-panel .section-title{flex-wrap:wrap}
+#variables-panel .section-title>div{flex:1;min-width:180px}
+@media(max-width:650px){.variable-filters{grid-template-columns:1fr}.variable-row .form-grid{grid-template-columns:1fr 1fr}.variable-toolbar small{margin-left:0}.variable-row{padding:10px}.variable-row details{margin-left:0}}
+
+.request-panel{border-top:3px solid var(--cyan)}
+.request-panel.inactive{opacity:.75}
+.request-panel .section-title{justify-content:space-between;gap:12px}
+.request-offline{display:flex;align-items:center;gap:8px}
+.request-offline input{width:auto;margin:0}
+.assessment-tools{padding:1px 14px 10px;background:var(--soft);border-radius:6px;margin:16px 0}
+.assessment-tools p,.request-panel p{overflow-wrap:anywhere}
+.assessment-filter{margin:12px 0}
+.evidence-tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 8px 26px}
+.evidence-tags .tag{font-size:11px;white-space:normal}
+.evidence-warning{color:var(--orange)}
+.evidence-details p{overflow-wrap:anywhere}

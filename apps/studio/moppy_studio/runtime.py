@@ -13,7 +13,7 @@ BRIDGE = Path(__file__).resolve().with_name("bridge.py")
 
 class Runtime:
     def call(self, action, payload, module, timeout=90):
-        if action not in ("inspect", "initialize"):
+        if action not in ("inspect", "initialize", "request", "assess"):
             raise ValueError("Unsupported runtime action")
         command = (
             module_setup(module)

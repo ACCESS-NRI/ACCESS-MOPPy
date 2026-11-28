@@ -5,6 +5,7 @@ import os
 import secrets
 import subprocess
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -12,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from . import __version__
 from .configuration import dump, parse_yaml, template
+from .probes import assessment_config
 from .service import Service
 
 WEB_ROOT = Path(__file__).resolve().parent / "web"
@@ -34,6 +36,19 @@ class PathBody(BaseModel):
 
 class SubmitBody(BaseModel):
     sha256: str
+
+
+class RequestBody(BaseModel):
+    request_version: str = Field(
+        default="v1.2.2.5", pattern=r"^v\d+(?:\.\d+){1,4}$", max_length=40
+    )
+    experiment: str = Field(default="", pattern=r"^[A-Za-z0-9_.-]*$", max_length=160)
+    priority: Literal["Core", "High", "Medium", "Low"] = "Core"
+    model_id: str = Field(
+        default="ACCESS-ESM1-6", pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]*$", max_length=160
+    )
+    module: str = "conda/analysis3"
+    offline: bool = False
 
 
 def create_app(service=None, token=None):
@@ -118,8 +133,8 @@ def create_app(service=None, token=None):
         }
 
     @api.get("/api/template")
-    def new_template():
-        c = template(getpass.getuser())
+    def new_template(cmip_version: str = "CMIP7"):
+        c = template(getpass.getuser(), cmip_version)
         return {"config": c, "yaml": dump(c)}
 
     @api.post("/api/config/parse")
@@ -134,6 +149,20 @@ def create_app(service=None, token=None):
     @api.post("/api/config/load")
     def load(body: PathBody):
         return svc.load(body.path)
+
+    @api.post("/api/request")
+    def request_variables(body: RequestBody):
+        payload = body.model_dump(exclude={"module"})
+        payload["cache_dir"] = str(svc.state / "cmip7-cache")
+        return svc.runtime.call("request", payload, body.module)
+
+    @api.post("/api/assessment")
+    def assessment(body: ConfigBody):
+        return svc.runtime.call(
+            "assess",
+            {"config": assessment_config(body.config), "scan": True},
+            body.module,
+        )
 
     @api.post("/api/plans")
     def plan(body: ConfigBody):

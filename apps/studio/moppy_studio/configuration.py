@@ -77,16 +77,26 @@ def module_setup(module):
     )
 
 
-def template(user="YOUR_USER"):
+def template(user="YOUR_USER", cmip_version="CMIP7"):
+    if cmip_version not in ("CMIP6", "CMIP6Plus", "CMIP7"):
+        raise ValueError("Choose CMIP6, CMIP6Plus or CMIP7 for a new configuration")
+    variables = (
+        [
+            "atmos.tas.tavg-h2m-hxy-u.mon.glb",
+            "atmos.pr.tavg-u-hxy-u.mon.glb",
+            "ocean.tos.tavg-u-hxy-sea.mon.glb",
+        ]
+        if cmip_version == "CMIP7"
+        else ["Amon.tas", "Amon.pr", "Omon.tos"]
+    )
     return dict(
-        variables=["Amon.tas", "Amon.pr", "Omon.tos"],
-        cmip_version="CMIP6",
+        variables=variables,
+        cmip_version=cmip_version,
         model_id="ACCESS-ESM1-6",
         source_id="ACCESS-ESM1-6",
         experiment_id="piControl",
         variant_label="r1i1p1f1",
         activity_id="CMIP",
-        grid_label="gn",
         input_folder="/g/data/p73/archive/YOUR_EXPERIMENT",
         output_folder=f"/scratch/YOUR_PROJECT/{user}/moppy/new-batch",
         queue="normal",
@@ -126,6 +136,7 @@ def resources(config, prefix=""):
 
 def validate(data, filesystem=True):
     c = copy.deepcopy(data)
+    # Keep the native CMIP6 interpretation of legacy imports without a version.
     c.setdefault("cmip_version", "CMIP6")
     c.setdefault("model_id", "ACCESS-ESM1-6")
     for key in (
@@ -149,6 +160,13 @@ def validate(data, filesystem=True):
     ):
         raise ValueError(
             "Variables must be table.variable or CMIP7 compound identifiers"
+        )
+    if c["cmip_version"] in ("CMIP6", "CMIP6Plus") and any(
+        v.count(".") != 1 for v in variables
+    ):
+        raise ValueError(
+            f"{c['cmip_version']} requires table.variable names, e.g. Amon.tas; "
+            "replace CMIP7 compound names or choose CMIP7"
         )
     if len(set(variables)) != len(variables):
         raise ValueError("Remove duplicate variables")

@@ -63,71 +63,394 @@ function action(id, fn) {
       busy = false;
       button.textContent = previous;
       button.disabled = id === "submit" ? !$("confirm-review").checked : false;
+      if (id === "use-starter-variables") updateTarget();
+      updateProbeButtons();
     }
   });
 }
-function syncSummary() {
-  const value = (k) => document.querySelector(`[data-key="${k}"]`).value;
-  const vars = $("variables")
-    .value.split(/[\s,]+/)
-    .filter(Boolean);
-  $("variable-count").textContent = vars.length + " selected";
-  $("summary-name").textContent = $("name").value || "New CMORisation batch";
-  $("summary-model").textContent = value("source_id") || "—";
-  $("summary-experiment").textContent = value("experiment_id") || "—";
-  $("summary-vars").textContent = vars.length;
-  $("summary-resources").textContent =
-    (value("cpus_per_node") || "—") + " CPU · " + (value("mem") || "—");
+let variableChoices = [];
+let variableEvidence = new Map(), requestInfo = null, assessmentInfo = null;
+const inputLabels = {
+  not_scanned: 'Inputs not scanned', not_required: 'Generated / bundled inputs',
+  found: 'Inputs found in sample', missing_files: 'No matching input files',
+  missing_inputs: 'Fields absent from sample', partial: 'Incomplete scan',
+  unavailable: 'Input assessment unavailable',
+};
+function probeConfig() {
+  const c = structuredClone(config);
+  for (const key of ['cmip_version', 'model_id', 'experiment_id', 'input_folder', 'start_year', 'end_year']) {
+    const value = document.querySelector(`[data-key="${key}"]`).value.trim();
+    if (value) c[key] = value; else delete c[key];
+  }
+  c.variables = variableChoices.map(v => v.name);
+  return c;
 }
-async function populate(data) {
-  config = structuredClone(data.config);
-  // Explicit defaults match MOPPy when older batch files omit these fields.
-  config.cmip_version ??= "CMIP6";
-  config.model_id ??= "ACCESS-ESM1-6";
-  document.querySelectorAll("[data-key]").forEach((el) => {
-    const v = config[el.dataset.key];
-    if (el.type === "checkbox") el.checked = v === true;
-    else el.value = v ?? "";
+function probeFingerprint() {
+  const c = probeConfig();
+  return JSON.stringify([c.cmip_version, c.model_id, c.experiment_id, c.input_folder,
+    c.start_year, c.end_year, c.file_patterns, c.variables, $('module').value,
+    $('request-version').value, $('request-priority').value, $('request-offline').checked]);
+}
+function updateProbeButtons() {
+  const cmip7 = $('cmor-target').value === 'CMIP7';
+  $('request-load').disabled = $('request-experiments-load').disabled = busy || !cmip7;
+  $('request-panel').classList.toggle('inactive', !cmip7);
+  $('scan-inputs').disabled = busy || !variableChoices.length;
+  $('select-mapped').disabled = busy || ![...variableEvidence.values()].some(r => r.mapping === 'mapped');
+  $('select-found').disabled = busy || ![...variableEvidence.values()].some(r => r.input_status === 'found');
+  $('download-assessment').disabled = busy || !variableEvidence.size;
+}
+function clearEvidence(message = '') {
+  variableEvidence = new Map(); requestInfo = assessmentInfo = null;
+  $('assessment-status').textContent = message || 'Check the model mapping and sample NetCDF headers in the input folder. No job is submitted.';
+  $('request-status').textContent = 'New request variables are added unchecked. Existing choices and resource settings are retained.';
+  $('variable-assessment').value = '';
+  updateProbeButtons();
+}
+function evidenceMatches(name, filter) {
+  const r = variableEvidence.get(name);
+  if (!filter) return true;
+  if (filter === 'mapped' || filter === 'unsupported') return r?.mapping === filter;
+  if (filter === 'found') return r?.input_status === 'found';
+  if (filter === 'missing') return ['missing_files', 'missing_inputs'].includes(r?.input_status);
+  return !r || (r.mapping === 'mapped' && ['not_scanned', 'partial', 'unavailable', 'not_required'].includes(r.input_status));
+}
+function evidenceHTML(name) {
+  const r = variableEvidence.get(name);
+  if (!r) return '';
+  const mapped = r.mapping === 'mapped';
+  const tags = `<div class="evidence-tags"><span class="tag ${mapped ? '' : 'evidence-warning'}">${mapped ? 'Mapped' : 'No supported mapping'}</span>${mapped ? `<span class="tag">${esc(inputLabels[r.input_status] || r.input_status)}</span>` : ''}${r.priority ? `<span class="tag">${esc(r.priority)}</span>` : ''}</div>`;
+  const lines = [r.reason,
+    r.alias ? 'MOPPy table alias: ' + r.alias : '',
+    r.required_inputs?.length ? 'Required native fields: ' + r.required_inputs.join(', ') : '',
+    r.optional_inputs?.length ? 'Optional native fields: ' + r.optional_inputs.join(', ') : '',
+    r.time_subsets?.length ? 'Requested time subsets: ' + r.time_subsets.join(', ') + ' (not applied to batch years)' : '',
+    r.missing_inputs?.length ? 'Not found in sampled headers: ' + r.missing_inputs.join(', ') : '',
+    r.patterns?.length ? 'Patterns: ' + r.patterns.join('; ') : '',
+    r.explicit_patterns ? 'Uses imported file_patterns; native override discovery does not filter filenames by year.' : '',
+    r.sample_files?.length ? 'Headers sampled: ' + r.sample_files.slice(0, 6).join('; ') : '',
+    r.sampled ? 'Only a sample of matching files was opened.' : '',
+    r.limited ? 'Scan limit reached; evidence is incomplete.' : '',
+    r.unknown_year ? 'Some filename years could not be parsed; those files were retained.' : '',
+    ...(r.errors || []).map(e => e.file + ': ' + e.error),
+  ].filter(Boolean);
+  return tags + `<details class="evidence-details"><summary>Request & input evidence</summary>${lines.map(s => `<p>${esc(s)}</p>`).join('')}</details>`;
+}
+async function loadRequest(catalogOnly) {
+  const c = probeConfig(), before = probeFingerprint();
+  if (c.cmip_version !== 'CMIP7') throw new Error('Choose CMIP7 to search the experiment request. Input assessment supports all three targets.');
+  if (!catalogOnly && !c.experiment_id) throw new Error('Enter an Experiment ID above, or browse the available experiments first.');
+  $('request-status').textContent = 'Loading the official CMIP7 request and installed mappings…';
+  try {
+    const result = await api('request', {request_version: $('request-version').value.trim(),
+      priority: $('request-priority').value, model_id: c.model_id,
+      experiment: catalogOnly ? '' : c.experiment_id, module: $('module').value,
+      offline: $('request-offline').checked});
+    if (before !== probeFingerprint()) {
+      $('request-status').textContent = 'Settings changed during lookup. Load the request again.'; return;
+    }
+    $('request-experiments').innerHTML = result.experiments.map(e => `<option value="${esc(e)}"></option>`).join('');
+    if (catalogOnly) {
+      $('request-status').textContent = `${result.experiments.length} experiments in ${result.request_version}. Type or choose an Experiment ID above, then load its request.`;
+      document.querySelector('[data-key="experiment_id"]').focus(); return;
+    }
+    checkVariables(result.variables.map(r => r.name));
+    const existing = new Set(variableChoices.map(v => v.name));
+    const additions = result.variables.filter(r => !existing.has(r.name));
+    if (existing.size + additions.length > 2000) throw new Error('The request plus existing checklist exceeds 2000 variables. Choose a higher priority cutoff or start a new batch. No variables were changed.');
+    variableChoices.push(...additions.map(r => ({name: r.name, selected: false,
+      resources: structuredClone(config.variable_resources?.[r.name] || {})})));
+    variableEvidence = new Map(result.variables.map(r => [r.name, r]));
+    requestInfo = result; assessmentInfo = null;
+    $('variable-search').value = ''; $('variable-table').value = ''; $('variable-assessment').value = '';
+    const mapped = result.variables.filter(r => r.mapping === 'mapped').length;
+    $('request-status').textContent = `${result.experiment} · ${result.request_version} · through ${result.priority} · all opportunities: ${result.variables.length} requested, ${mapped} mapped, ${result.variables.length - mapped} without a supported mapping. ${additions.length} new unchecked rows added.`;
+    $('assessment-status').textContent = `Mapping lookup: MOPPy ${result.version} · ${result.module}. Scan inputs to check the archive, or select mapped candidates for review.`;
+    builderChanged(); renderVariables();
+  } catch (e) {
+    $('request-status').textContent = 'Request lookup failed. ' + e.message;
+    throw e;
+  }
+}
+action('request-experiments-load', () => loadRequest(true));
+action('request-load', () => loadRequest(false));
+action('scan-inputs', async () => {
+  const c = probeConfig(), before = probeFingerprint();
+  $('assessment-status').textContent = 'Scanning mapping-specific input streams and sampling NetCDF headers…';
+  try {
+    const result = await api('assessment', {config: c, module: $('module').value});
+    if (before !== probeFingerprint()) {
+      $('assessment-status').textContent = 'Settings changed during the scan. Scan again for current evidence.'; return;
+    }
+    for (const r of result.variables) variableEvidence.set(r.name, {...variableEvidence.get(r.name), ...r});
+    assessmentInfo = result;
+    const found = result.variables.filter(r => r.input_status === 'found').length;
+    const unsupported = result.variables.filter(r => r.mapping !== 'mapped').length;
+    $('assessment-status').textContent = `Last scan: ${found} with inputs found in sampled headers · ${unsupported} without a supported mapping · ${result.scan.headers_read} headers read. MOPPy ${result.version} · ${result.module}. Full coverage and scientific checks remain.`;
+    renderVariables();
+  } catch (e) { $('assessment-status').textContent = 'Input assessment failed. ' + e.message; throw e; }
+});
+for (const [id, predicate] of [['select-mapped', r => r.mapping === 'mapped'], ['select-found', r => r.input_status === 'found']]) {
+  $(id).addEventListener('click', () => {
+    if (busy) return;
+    for (const v of variableChoices) { const r = variableEvidence.get(v.name); v.selected = Boolean(r && predicate(r)); }
+    builderChanged(); renderVariables();
   });
-  $("variables").value = (config.variables || []).join("\n");
-  $("project").value =
-    String(config.scheduler_options || "").match(/^#PBS -P (\S+)\s*$/)?.[1] ||
-    "";
-  $("yaml").value = data.yaml || "";
-  $("parent-info").value = config.parent_info
-    ? (await api("config/render", { config: config.parent_info })).yaml
-    : "";
-  plan = null;
+}
+action('download-assessment', async () => {
+  const report = {request: requestInfo, assessment: assessmentInfo,
+    config: probeConfig(), selected_variables: selectedVariables(), variables: [...variableEvidence.values()],
+    limitations: 'Header samples do not validate complete time coverage, units, grids, auxiliary resources or scientific correctness. Request time subsets are not applied to the batch.'};
+  const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], {type: 'application/json'}));
+  const a = document.createElement('a'); a.href = url; a.download = 'moppy-input-assessment.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+for (const id of ['request-version', 'request-priority', 'request-offline', 'module']) {
+  $(id).addEventListener('input', () => {
+    if (id === 'request-version') $('request-experiments').innerHTML = '';
+    clearEvidence('Settings changed. Reload the request or scan inputs for current evidence.'); renderVariables();
+  });
+}
+$('builder').addEventListener('input', event => {
+  if (['cmip_version', 'model_id', 'experiment_id', 'input_folder', 'start_year', 'end_year'].includes(event.target.dataset.key)) {
+    clearEvidence('Batch settings changed. Reload the request or scan inputs for current evidence.'); renderVariables();
+  }
+});
+$('variable-assessment').addEventListener('change', renderVariables);
+const resourceFields = [
+  ['queue', 'Queue', 'text'], ['cpus_per_node', 'CPUs', 'number'],
+  ['mem', 'Memory', 'text'], ['jobfs', 'Job filesystem', 'text'],
+  ['walltime', 'Walltime', 'text'],
+];
+const isMapping = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+function checkVariables(variables) {
+  if (!Array.isArray(variables) || variables.some(v => typeof v !== 'string' ||
+      !/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(v) || !v.includes('.'))) {
+    throw new Error('Use CMIP7 compound identifiers (atmos.tas.tavg-h2m-hxy-u.mon.glb), or table.variable names for CMIP6 (Amon.tas).');
+  }
+  if (variables.length > 2000) throw new Error('Choose at most 2000 variables.');
+  if (new Set(variables).size !== variables.length) throw new Error('Remove duplicate variable names in the YAML.');
+}
+const cmip7Examples = ['atmos.tas.tavg-h2m-hxy-u.mon.glb', 'atmos.pr.tavg-u-hxy-u.mon.glb', 'ocean.tos.tavg-u-hxy-sea.mon.glb'];
+const tableExamples = ['Amon.tas', 'Amon.pr', 'Omon.tos'];
+function updateTarget() {
+  const target = $('cmor-target').value;
+  const examples = target === 'CMIP7' ? cmip7Examples : tableExamples;
+  $('variable-add').placeholder = examples.join('\n');
+  $('variable-format').textContent = target + ': ' + examples[0];
+  $('target-help').textContent = target === 'CMIP7'
+    ? 'CMIP7 uses compound names with realm, variable, branding, frequency and region. MOPPy also supports mapped table.variable aliases.'
+    : target === 'CMIP6Plus'
+      ? 'CMIP6Plus uses table.variable names with its own controlled vocabulary. MOPPy supports legacy tables (Amon.tas) and MIP tables (APmon.tas) when available in the runtime.'
+      : target === 'CMIP6'
+        ? 'CMIP6 uses table.variable names, such as Amon.tas, with CMIP6 controlled vocabularies and tables.'
+        : 'Check the installed MOPPy runtime supports this imported target.';
+  $('use-starter-variables').hidden = !['CMIP6', 'CMIP6Plus', 'CMIP7'].includes(target);
+  $('use-starter-variables').textContent = 'Use ' + target + ' starter variables';
+  const incompatible = ['CMIP6', 'CMIP6Plus'].includes(target) && selectedVariables().some(name => name.split('.').length !== 2);
+  $('target-variables-note').hidden = !incompatible;
+  $('target-variables-note').textContent = incompatible
+    ? target + ' needs table.variable names. Replace or deselect the selected CMIP7 names, load a matching config, or use the starter list above.' : '';
+  updateProbeButtons();
+}
+$('cmor-target').addEventListener('change', () => { builderChanged(); updateTarget(); });
+action('use-starter-variables', async () => {
+  if ($('variable-add').value.trim()) throw new Error('Add or clear the names you entered before replacing the variable list.');
+  const target = $('cmor-target').value;
+  const data = await api('template?cmip_version=' + encodeURIComponent(target));
+  // A slow response must not replace variables after the user switches target.
+  if ($('cmor-target').value !== target) return;
+  const current = new Map(variableChoices.map(v => [v.name, v.resources]));
+  variableChoices = data.config.variables.map(name => ({name, selected: true,
+    resources: structuredClone(current.get(name) || config.variable_resources?.[name] || {})}));
+  clearEvidence();
+  $('variable-search').value = ''; $('variable-table').value = '';
+  builderChanged(); renderVariables();
+  notify(target + ' starter variables loaded. Your paths, resources and metadata are retained.');
+});
+function checkTargetNames(c) {
+  if (['CMIP6', 'CMIP6Plus'].includes(c.cmip_version) && c.variables.some(name => name.split('.').length !== 2)) {
+    throw new Error(c.cmip_version + ' requires table.variable names, e.g. Amon.tas; replace CMIP7 compound names or choose CMIP7.');
+  }
+}
+function selectedVariables() {
+  return variableChoices.filter(v => v.selected).map(v => v.name);
+}
+function visibleVariables() {
+  const query = $('variable-search').value.trim().toLowerCase();
+  const table = $('variable-table').value;
+  return variableChoices.filter(v => v.name.toLowerCase().includes(query) &&
+    (!table || v.name.split('.')[0] === table) && evidenceMatches(v.name, $('variable-assessment').value));
+}
+function syncSummary(snapshot) {
+  const value = k => snapshot ? snapshot[k] : document.querySelector(`[data-key="${k}"]`).value;
+  const count = snapshot ? (Array.isArray(snapshot.variables) ? snapshot.variables.length : 0) : selectedVariables().length;
+  $('variable-count').textContent = selectedVariables().length + ' of ' + variableChoices.length + ' selected';
+  $('summary-name').textContent = $('name').value || 'New CMORisation batch';
+  $('summary-target').textContent = value('cmip_version') || 'CMIP6';
+  $('summary-model').textContent = value('source_id') || '—';
+  updateTarget();
+  $('summary-experiment').textContent = value('experiment_id') || '—';
+  $('summary-vars').textContent = count;
+  $('summary-resources').textContent = (value('cpus_per_node') || '—') + ' CPU · ' + (value('mem') || '—');
+}
+function renderVariables() {
+  const table = $('variable-table').value;
+  const tables = [...new Set(variableChoices.map(v => v.name.split('.')[0]))].sort();
+  $('variable-table').innerHTML = '<option value="">All tables / realms</option>' + tables.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  $('variable-table').value = tables.includes(table) ? table : '';
+  const visible = new Set(visibleVariables());
+  $('variable-list').innerHTML = variableChoices.map((v, index) => {
+    if (!visible.has(v)) return '';
+    return `<div class="variable-row ${v.selected ? 'included' : ''}" data-choice="${index}">
+      <div class="variable-heading"><label><input type="checkbox" data-select-variable ${v.selected ? 'checked' : ''}><code>${esc(v.name)}</code></label>
+      <button type="button" class="icon-button remove-variable" aria-label="Remove ${esc(v.name)}">×</button></div>${evidenceHTML(v.name)}
+      <details><summary>Resources · <span class="resource-status">${Object.keys(v.resources).length ? 'custom overrides' : 'batch defaults'}</span></summary>
+      <p>Leave a field empty to inherit the batch resource. Unchecked variables keep their settings while you edit.</p>
+      <div class="form-grid three">${resourceFields.map(([key, label, type]) => `<label>${label}<input data-resource="${key}" type="${type}" ${type === 'number' ? 'min="1" step="1"' : ''} value="${esc(v.resources[key] ?? '')}" placeholder="Batch default" aria-label="${esc(v.name)} ${label}"></label>`).join('')}</div></details></div>`;
+  }).join('') || `<p class="variable-empty">${variableChoices.length ? 'No variables match these filters.' : 'Add variables below or load a batch config to get started.'}</p>`;
+  $('variable-visible').textContent = visible.size + ' shown';
+  $('select-visible').disabled = $('clear-visible').disabled = visible.size === 0;
   syncSummary();
 }
-async function fromBuilder() {
-  const c = structuredClone(config);
-  document.querySelectorAll("[data-key]").forEach((el) => {
-    const k = el.dataset.key;
-    if (el.type === "checkbox") c[k] = el.checked;
-    else if (el.value.trim() === "") delete c[k];
-    else c[k] = el.type === "number" ? Number(el.value) : el.value.trim();
+function builderChanged() { plan = null; syncSummary(); }
+$('variable-search').addEventListener('input', renderVariables);
+$('variable-table').addEventListener('change', renderVariables);
+for (const [id, selected] of [['select-visible', true], ['clear-visible', false]]) {
+  $(id).addEventListener('click', () => {
+    visibleVariables().forEach(v => v.selected = selected);
+    builderChanged(); renderVariables();
   });
-  c.variables = $("variables")
-    .value.split(/[\s,]+/)
-    .filter(Boolean);
-  const project = $("project").value.trim();
-  if (project) c.scheduler_options = "#PBS -P " + project;
-  else if (!config.scheduler_options) delete c.scheduler_options;
-  const parent = $("parent-info").value.trim();
-  if (parent)
-    c.parent_info = (await api("config/parse", { yaml: parent })).config;
+}
+$('variable-list').addEventListener('input', event => {
+  const row = event.target.closest('[data-choice]');
+  if (!row) return;
+  const choice = variableChoices[Number(row.dataset.choice)];
+  if (event.target.matches('[data-select-variable]')) {
+    choice.selected = event.target.checked;
+    row.classList.toggle('included', choice.selected);
+  } else if (event.target.dataset.resource) {
+    const key = event.target.dataset.resource;
+    const value = event.target.value.trim();
+    // Retain invalid number input until it can be reported, rather than inheriting silently.
+    if (event.target.validity.badInput) choice.resources[key] = null;
+    else if (!value) delete choice.resources[key];
+    else choice.resources[key] = event.target.type === 'number' ? Number(value) : value;
+    row.querySelector('.resource-status').textContent = Object.keys(choice.resources).length ? 'custom overrides' : 'batch defaults';
+  }
+  builderChanged();
+});
+$('variable-list').addEventListener('click', event => {
+  if (!event.target.closest('.remove-variable')) return;
+  const index = Number(event.target.closest('[data-choice]').dataset.choice);
+  const [removed] = variableChoices.splice(index, 1);
+  variableEvidence.delete(removed.name);
+  if (isMapping(config.variable_resources)) delete config.variable_resources[removed.name];
+  builderChanged(); renderVariables();
+});
+action('add-variables', async () => {
+  const names = [...new Set($('variable-add').value.split(/[\s,]+/).filter(Boolean))];
+  if (!names.length) throw new Error('Enter at least one variable to add.');
+  checkVariables(names);
+  const known = new Map(variableChoices.map(v => [v.name, v]));
+  if (new Set([...known.keys(), ...names]).size > 2000) throw new Error('Keep at most 2000 variables in the builder.');
+  for (const name of names) {
+    if (known.has(name)) known.get(name).selected = true;
+    else variableChoices.push({name, selected: true, resources: structuredClone(config.variable_resources?.[name] || {})});
+  }
+  $('variable-add').value = ''; $('variable-search').value = ''; $('variable-table').value = '';
+  builderChanged(); renderVariables();
+  notify(names.length + ' variable' + (names.length === 1 ? '' : 's') + ' selected. Existing entries are kept once.');
+});
+async function populate(data, keepChoices = false) {
+  const next = structuredClone(data.config);
+  const names = next.variables ?? [];
+  checkVariables(names);
+  if ('variable_resources' in next && (!isMapping(next.variable_resources) ||
+      Object.values(next.variable_resources).some(v => !isMapping(v)))) {
+    throw new Error('variable_resources must map variable names to resource settings.');
+  }
+  for (const key of ['qc_plots', 'resume', 'enable_chunking', 'use_jobfs_staging']) {
+    if (key in next && typeof next[key] !== 'boolean') throw new Error(key + ' must be true or false.');
+  }
+  // Complete async parsing before replacing any of the user's current draft.
+  const parent = next.parent_info ? (await api('config/render', {config: next.parent_info})).yaml : '';
+  const retained = keepChoices ? variableChoices.filter(v => !names.includes(v.name)) : [];
+  config = next;
+  clearEvidence();
+  // New configurations use the template's CMIP7 defaults; unversioned imports retain legacy semantics.
+  config.cmip_version ??= 'CMIP6'; config.model_id ??= 'ACCESS-ESM1-6';
+  variableChoices = [...names.map(name => ({name, selected: true})), ...retained.map(v => ({name: v.name, selected: false}))]
+    .map(v => ({...v, resources: structuredClone(config.variable_resources?.[v.name] || {})}));
+  document.querySelectorAll('[data-key]').forEach(el => {
+    const value = config[el.dataset.key];
+    if (el.type === 'checkbox') el.checked = value === true;
+    else el.value = value ?? '';
+  });
+  $('project').value = String(config.scheduler_options || '').match(/^#PBS -P (\S+)\s*$/)?.[1] || '';
+  $('yaml').value = data.yaml || '';
+  $('parent-info').value = parent;
+  if (!keepChoices) {
+    $('variable-add').value = ''; $('variable-search').value = ''; $('variable-table').value = '';
+  }
+  plan = null; renderVariables();
+}
+async function fromBuilder() {
+  if ($('variable-add').value.trim()) throw new Error('Click Add variables to include the names you entered, or clear the entry before continuing.');
+  const c = structuredClone(config);
+  document.querySelectorAll('[data-key]').forEach(el => {
+    const key = el.dataset.key;
+    if (el.type === 'number' && !el.checkValidity()) throw new Error(key + ' must be a positive whole number.');
+    if (el.type === 'checkbox') {
+      if (key in c || el.checked) c[key] = el.checked;
+    } else if (el.value.trim() === '') delete c[key];
+    else if (el.dataset.type === 'boolean') c[key] = el.value === 'true';
+    else c[key] = el.type === 'number' ? Number(el.value) : el.value.trim();
+  });
+  c.variables = selectedVariables();
+  const overrides = structuredClone(config.variable_resources || {});
+  for (const choice of variableChoices) {
+    if ('cpus_per_node' in choice.resources && (!Number.isInteger(choice.resources.cpus_per_node) || choice.resources.cpus_per_node < 1)) {
+      throw new Error(choice.name + ': CPUs must be a positive whole number.');
+    }
+    if (Object.keys(choice.resources).length) overrides[choice.name] = structuredClone(choice.resources);
+    else delete overrides[choice.name];
+  }
+  if (Object.keys(overrides).length) c.variable_resources = overrides;
+  else delete c.variable_resources;
+  const project = $('project').value.trim();
+  if (project) c.scheduler_options = '#PBS -P ' + project;
+  else if (/^#PBS -P \S+\s*$/.test(config.scheduler_options || '')) delete c.scheduler_options;
+  const parent = $('parent-info').value.trim();
+  if (parent) c.parent_info = (await api('config/parse', {yaml: parent})).config;
   else delete c.parent_info;
-  // Output folder and scripts are kept together; follows a changed output path.
   if (c.script_dir === config.output_folder) c.script_dir = c.output_folder;
   return c;
 }
 async function currentConfig() {
-  if (yamlMode)
-    return (await api("config/parse", { yaml: $("yaml").value })).config;
-  return await fromBuilder();
+  const c = yamlMode ? (await api('config/parse', {yaml: $('yaml').value})).config : await fromBuilder();
+  checkVariables(c.variables);
+  checkTargetNames(c);
+  if (!c.variables.length) throw new Error('Select at least one variable before downloading or reviewing the batch.');
+  return c;
 }
+let yamlRevision = 0, yamlTimer;
+$('yaml').addEventListener('input', () => {
+  plan = null;
+  const revision = ++yamlRevision;
+  clearTimeout(yamlTimer);
+  for (const id of ['summary-target', 'summary-model', 'summary-experiment', 'summary-vars', 'summary-resources']) $(id).textContent = 'Editing YAML…';
+  yamlTimer = setTimeout(async () => {
+    try {
+      const parsed = await api('config/parse', {yaml: $('yaml').value});
+      if (yamlMode && revision === yamlRevision) syncSummary(parsed.config);
+    } catch (_) {
+      if (yamlMode && revision === yamlRevision) $('summary-vars').textContent = 'Invalid YAML';
+    }
+  }, 350);
+});
 function setEditor(mode) {
+  yamlRevision++;
   yamlMode = mode;
   $("builder").hidden = mode;
   $("yaml-panel").hidden = !mode;
@@ -135,20 +458,23 @@ function setEditor(mode) {
   $("tab-yaml").classList.toggle("selected", mode);
   $("tab-builder").setAttribute("aria-selected", String(!mode));
   $("tab-yaml").setAttribute("aria-selected", String(mode));
+  syncSummary();
 }
 action("tab-yaml", async () => {
   if (yamlMode) return;
-  config = await fromBuilder();
-  $("yaml").value = (await api("config/render", { config })).yaml;
+  const next = await fromBuilder();
+  const rendered = await api("config/render", { config: next });
+  config = next;
+  $("yaml").value = rendered.yaml;
   setEditor(true);
 });
 action("tab-builder", async () => {
   if (!yamlMode) return;
-  await populate(await api("config/parse", { yaml: $("yaml").value }));
+  await populate(await api("config/parse", { yaml: $("yaml").value }), true);
   setEditor(false);
 });
 action("apply-yaml", async () => {
-  await populate(await api("config/parse", { yaml: $("yaml").value }));
+  await populate(await api("config/parse", { yaml: $("yaml").value }), true);
   setEditor(false);
   notify("YAML applied. Advanced settings are preserved.");
 });
@@ -198,7 +524,7 @@ function showReview(r) {
   $("review-error").hidden = true;
   $("review-content").innerHTML =
     `<h3>${esc(r.name)}</h3><p class="run-meta">${esc(r.directory)}</p>
-    <div class="review-facts"><span class="tag">MOPPy ${esc(r.runtime.version)}</span><span class="tag">${esc(r.runtime.module)}</span><span class="tag">${r.config.variables.length} variable jobs</span><span class="tag">Monitor: 1 CPU · 4 GB · ${esc(r.runtime.monitor_walltime)}</span></div>
+    <div class="review-facts"><span class="tag">Target: ${esc(r.config.cmip_version || 'CMIP6')}</span><span class="tag">MOPPy ${esc(r.runtime.version)}</span><span class="tag">${esc(r.runtime.module)}</span><span class="tag">${r.config.variables.length} variable jobs</span><span class="tag">Monitor: 1 CPU · 4 GB · ${esc(r.runtime.monitor_walltime)}</span></div>
     ${r.warnings.map((w) => `<div class="warning">${esc(w)}</div>`).join("")}
     <details open><summary>Saved batch_config.yml</summary><pre>${esc(r.yaml)}</pre></details><details><summary>Native PBS monitor script</summary><pre>${esc(r.script)}</pre></details>`;
   $("review-dialog").showModal();
@@ -284,8 +610,13 @@ async function loadRun(id) {
   const detail = $("run-detail");
   detail.hidden = false;
   if (r.state === "review") {
-    detail.innerHTML = `<section class="panel"><h2>${esc(r.name)}</h2><p>This configuration is saved and has not been submitted.</p><div class="inline"><button id="open-saved-review" class="primary">Review saved plan →</button></div></section>`;
+    detail.innerHTML = `<section class="panel"><h2>${esc(r.name)}</h2><p>This configuration is saved and has not been submitted.</p><div class="inline"><button id="open-saved-review" class="primary">Review saved plan →</button><button id="edit-saved-plan" class="secondary">Edit configuration</button></div></section>`;
     $("open-saved-review").onclick = () => showReview(r);
+    action('edit-saved-plan', async () => {
+      await populate(r); $('name').value = r.name; setEditor(false);
+      location.hash = 'build';
+      notify('Saved plan loaded for editing. Check & review creates a new plan with your changes.');
+    });
     return;
   }
   detail.innerHTML = `<section class="panel"><div class="page-heading"><div><h2>${esc(r.name)}</h2><p>${esc(r.directory)}</p></div><span class="badge ${esc(r.state)}">${esc(r.state)}</span></div>
